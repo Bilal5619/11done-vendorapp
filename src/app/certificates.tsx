@@ -28,6 +28,7 @@ import { captureRef } from "react-native-view-shot";
 import { normalizeApiError } from "@/api";
 import {
   createCertificateDraft,
+  createStandaloneCertificateDraft,
   getBookingCertificates,
   getCertificate,
   getCertificateTemplates,
@@ -346,15 +347,16 @@ export default function CertificatesScreen() {
         return;
       }
 
-      const localCertificate = createLocalDraft(nextDefinition, template.id);
-      openEditor(localCertificate, job);
-      setCertificates((current) => [
-        localCertificate,
-        ...current.filter((item) => item.id !== localCertificate.id),
-      ]);
-      setNotice(
-        "Draft started locally. You can continue editing it even before linking it to a job.",
-      );
+      const response = await createStandaloneCertificateDraft(template.id);
+
+openEditor(response.certificate, null);
+
+setCertificates((current) => [
+  response.certificate,
+  ...current.filter((item) => item.id !== response.certificate.id),
+]);
+
+setNotice("Standalone certificate draft created.");
     });
   }
 
@@ -408,15 +410,18 @@ export default function CertificatesScreen() {
           : undefined),
       certificate_category: baseCertificate?.certificate_category,
       template_id: baseCertificate?.template_id,
-      customer_name:
-        answers["client_engineer.client_name"] ||
-        baseCertificate?.customer_name,
-      customer_email:
-        answers["client_engineer.client_email"] ||
-        baseCertificate?.customer_email,
+    customer_name:
+  answers["client_installation_details.client_name"] ||
+  answers["client_engineer.client_name"] ||
+  baseCertificate?.customer_name,
+     customer_email:
+  answers["client_installation_details.client_email"] ||
+  answers["client_engineer.client_email"] ||
+  baseCertificate?.customer_email,
       customer_phone:
-        answers["client_engineer.client_contact_number"] ||
-        baseCertificate?.customer_phone,
+  answers["client_installation_details.client_telephone"] ||
+  answers["client_engineer.client_contact_number"] ||
+  baseCertificate?.customer_phone,
       job_reference:
         answers["client_engineer.job_reference"] ||
         answers["client_engineer.certificate_number"] ||
@@ -436,8 +441,13 @@ export default function CertificatesScreen() {
       site_county: baseCertificate?.site_county,
       site_postcode:
         answers["client_engineer.postcode"] || baseCertificate?.site_postcode,
-      inspection_date:
-        answers["client_engineer.issue_date"] ||
+  inspection_date:
+  definition.type === "pat"
+    ? answers["test_equipment_details.test_date"] ||
+      baseCertificate?.inspection_date
+    : definition.type === "cp12"
+      ? baseCertificate?.inspection_date || toDateValue(new Date())
+      : answers["client_engineer.issue_date"] ||
         baseCertificate?.inspection_date,
       inspection_time: baseCertificate?.inspection_time,
       next_due_date:
@@ -505,7 +515,7 @@ export default function CertificatesScreen() {
     if (!certificate) return null;
 
     if (
-      !bookingId ||
+     
       !certificate.id ||
       String(certificate.id).startsWith("local-")
     ) {
@@ -546,18 +556,19 @@ export default function CertificatesScreen() {
 
   async function generatePdf() {
     if (
-      !certificate ||
-      !allStepsValid ||
-      !hasSiteAddress
-    ) {
-      if (!hasSiteAddress)
-        setError(MISSING_SITE_ADDRESS_MESSAGE);
-      return;
-    }
+  !certificate ||
+  !allStepsValid ||
+  (bookingId && !hasSiteAddress)
+) {
+  if (bookingId && !hasSiteAddress) {
+    setError(MISSING_SITE_ADDRESS_MESSAGE);
+  }
+  return;
+}
     await runSaving(async () => {
       const savedCertificate = await saveDraft("");
       if (
-        !bookingId ||
+       
         !savedCertificate?.id ||
         String(savedCertificate.id).startsWith("local-")
       ) {
@@ -787,11 +798,11 @@ export default function CertificatesScreen() {
             <Text style={ui.muted}>
               Answer the questions below. Required answers are marked with *.
             </Text>
-            {!hasSiteAddress ? (
-              <Text style={styles.validation}>
-                {MISSING_SITE_ADDRESS_MESSAGE}
-              </Text>
-            ) : null}
+           {bookingId && !hasSiteAddress ? (
+  <Text style={styles.validation}>
+    {MISSING_SITE_ADDRESS_MESSAGE}
+  </Text>
+) : null}
           </Card>
 
           {step.fields ? (
@@ -942,7 +953,7 @@ export default function CertificatesScreen() {
                               row["model"],
                             ]
                               .filter(Boolean)
-                              .join(" Â· ");
+                              .join(" · ");
                             return label || `Appliance ${index + 1}`;
                           })
                           .filter(Boolean),
@@ -1001,11 +1012,11 @@ export default function CertificatesScreen() {
                 <ActionButton
                   label="Generate Certificate (PDF)"
                   disabled={
-                    !allStepsValid ||
-                    !hasSiteAddress ||
-                    isSaving ||
-                    !isDraft
-                  }
+  !allStepsValid ||
+  (bookingId && !hasSiteAddress) ||
+  isSaving ||
+  !isDraft
+}
                   onPress={generatePdf}
                 />
               )}
@@ -1313,14 +1324,15 @@ function QuestionField({
       <View style={styles.question}>
         <Text style={styles.questionLabel}>{label}</Text>
         {Platform.OS === "web" ? (
-          <TextInput
-            value={value}
-            onChangeText={onChange}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#737e8e"
-            style={ui.input}
-          />
-        ) : (
+  <TextInput
+    value={value}
+    onChangeText={onChange}
+    placeholder="YYYY-MM-DD"
+    placeholderTextColor="#737e8e"
+    style={ui.input}
+    {...({ type: "date" } as any)}
+  />
+) : (
           <>
             <Pressable
               onPress={() => !field.readOnly && setShowDate(true)}
@@ -1757,7 +1769,7 @@ function ScheduleTable({
             row["model"],
           ]
             .filter(Boolean)
-            .join(" Â· ");
+            .join(" · ");
           return (
             <View key={`${step.key}-${index}`} style={styles.tableRow}>
               <View style={{ flex: 1, gap: 3 }}>
@@ -2032,15 +2044,24 @@ function SignaturePad({
   function startStroke(locationX: number, locationY: number) {
     if (!canvasSize.width || !canvasSize.height) return;
 
-    const normalizedX = Math.max(
-      0,
-      Math.min(500, (locationX / canvasSize.width) * 500),
-    );
+    const paddingX = 20;
+const paddingY = 20;
 
-    const normalizedY = Math.max(
-      0,
-      Math.min(300, (locationY / canvasSize.height) * 300),
-    );
+const normalizedX = Math.max(
+  paddingX,
+  Math.min(
+    500 - paddingX,
+    (locationX / canvasSize.width) * 500,
+  ),
+);
+
+const normalizedY = Math.max(
+  paddingY,
+  Math.min(
+    300 - paddingY,
+    (locationY / canvasSize.height) * 300,
+  ),
+);
 
     setHasStartedDrawing(true);
 
@@ -2053,16 +2074,24 @@ function SignaturePad({
   function continueStroke(locationX: number, locationY: number) {
     if (!canvasSize.width || !canvasSize.height) return;
 
-    const normalizedX = Math.max(
-      0,
-      Math.min(500, (locationX / canvasSize.width) * 500),
-    );
+    const paddingX = 20;
+const paddingY = 20;
 
-    const normalizedY = Math.max(
-      0,
-      Math.min(300, (locationY / canvasSize.height) * 300),
-    );
+const normalizedX = Math.max(
+  paddingX,
+  Math.min(
+    500 - paddingX,
+    (locationX / canvasSize.width) * 500,
+  ),
+);
 
+const normalizedY = Math.max(
+  paddingY,
+  Math.min(
+    300 - paddingY,
+    (locationY / canvasSize.height) * 300,
+  ),
+);
     setDraftPaths((current) => {
       if (!current.length) {
         return [`M${normalizedX.toFixed(1)} ${normalizedY.toFixed(1)}`];
@@ -2578,7 +2607,10 @@ function mergeJobPrefill(
   // ------------------------------------------------
   // CP12
   // ------------------------------------------------
-  if (definition.type === "cp12") {
+  if (
+  definition.type === "cp12" ||
+  definition.type === "pat"
+) {
     values["client_installation_details.client_name"] = customerName;
 
     values["client_installation_details.client_telephone"] = customerPhone;
@@ -2672,6 +2704,7 @@ function mergeJobPrefill(
 }
 function getEnteredSiteAddress(answers: AnswerMap) {
   return (
+    answers["client_installation_details.installation_address_line_1"] ||
     answers["client_engineer.installation_address"] ||
     answers["client_engineer.client_address"] ||
     ""
@@ -2873,13 +2906,8 @@ function getNextDueDate(
     return answers["declaration.next_test_due"] || null;
   if (definition.type === "smoke_alarm")
     return answers["declaration.next_service_due"] || null;
-  if (definition.type === "pat")
-    return (
-      (tables.appliance_register ?? [])
-        .map((row) => row.retest_due_date)
-        .filter(Boolean)
-        .sort()[0] || null
-    );
+ if (definition.type === "pat")
+  return answers["test_equipment_details.retest_date"] || null;
   if (definition.type === "cp12")
     return answers["final_checks.next_inspection_due"] || null;
   return null;
@@ -2962,8 +2990,8 @@ async function pathsToPngUpload(
 ): Promise<SignatureUpload | null> {
   if (typeof document === "undefined" || !paths.length) return null;
   const canvas = document.createElement("canvas");
-  canvas.width = 1000;
-  canvas.height = 300;
+ canvas.width = 1000;
+canvas.height = 600;
   const context = canvas.getContext("2d");
   if (!context) return null;
   context.fillStyle = "#ffffff";

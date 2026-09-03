@@ -140,7 +140,15 @@ export async function createCertificateDraft(
     }),
   );
 }
-
+export async function createStandaloneCertificateDraft(
+  templateId: string | number,
+) {
+  return unwrapData<{ certificate: CertificateRecord }>(
+    await api.post("/certificates", {
+      template_id: templateId,
+    }),
+  );
+}
 export async function getCertificates(_params?: {
   search?: string;
   job_id?: string | number;

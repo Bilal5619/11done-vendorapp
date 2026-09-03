@@ -98,7 +98,20 @@ const clientEngineer: ElectricalStep = {
     f("test_instrument_serials", "Test instrument serial(s)"),
   ],
 };
+const patHeaderStep: ElectricalStep = {
+  key: "cp12_header",
+  title: "Certificate Details",
+  fields: [
+    f("certificate_type_name", "Certificate type/name", "text", {
+      readOnly: true,
+      defaultValue: "PAT / Portable Appliance Testing",
+    }),
 
+   f("booking_id", "Job / Booking ID", "text"),
+
+    f("certificate_reference_number", "Certificate reference number", "text"),
+  ],
+};
 const gasPropertyAndParties: ElectricalStep = {
   key: "property_parties",
   title: "Property & Parties",
@@ -134,10 +147,8 @@ const cp12HeaderStep: ElectricalStep = {
       readOnly: true,
       defaultValue: "CP12 / Landlord Gas Safety Record",
     }),
-    f("booking_id", "Job / Booking ID", "text", { readOnly: true }),
-    f("certificate_reference_number", "Certificate reference number", "text", {
-      readOnly: true,
-    }),
+    f("booking_id", "Job / Booking ID", "text"),
+    f("certificate_reference_number", "Certificate reference number", "text"),
   ],
 };
 
@@ -500,7 +511,7 @@ const tableStep = (
   table: { itemType, fields, required, storageKey },
 });
 
-export const electricalCertificates: ElectricalCertificateDefinition[] = [
+const allCertificateDefinitions: ElectricalCertificateDefinition[] = [
   {
     type: "eic",
     shortTitle: "EIC",
@@ -864,163 +875,189 @@ export const electricalCertificates: ElectricalCertificateDefinition[] = [
   {
     type: "pat",
     shortTitle: "PAT",
-    title: "Portable Appliance Testing",
-    templateMatchers: ["pat", "portable appliance"],
+    title: "Portable Appliance Test (PAT)",
+    templateMatchers: ["pat", "portable appliance test"],
     steps: [
-      clientEngineer,
-      tableStep(
-        "appliance_register",
-        "Appliance Register",
-        "appliance",
-        [
-          f("asset_id", "Asset/Appliance ID", "text", { required: true }),
-          f("description", "Description", "text", { required: true }),
-          f("location", "Location/Room"),
-          f("make_model", "Make/Model"),
-          f("appliance_class", "Appliance class", "select", {
-            options: ["Class I", "Class II", "Class III"],
-            required: true,
-          }),
-          f("fuse_rating", "Fuse rating", "number", { unit: "A" }),
-          f("visual_inspection", "Visual inspection", "select", {
-            options: ["Pass", "Fail"],
-            required: true,
-          }),
-          f("earth_continuity", "Earth continuity", "decimal", { unit: "Ω" }),
-          f("insulation_resistance", "Insulation resistance", "decimal", {
-            unit: "MΩ",
-          }),
-          f("earth_leakage", "Earth leakage", "decimal", { unit: "mA" }),
-          f("functional_check", "Functional check", "select", {
-            options: ["Pass", "Fail"],
-            required: true,
-          }),
-          f("overall_result", "Overall result", "select", {
-            options: ["Pass", "Fail"],
-            required: true,
-          }),
-          f("test_date", "Test date", "date", { required: true }),
-          f("retest_due_date", "Retest due date", "date", { required: true }),
-          f("label_applied", "Label applied?", "boolean"),
+  patHeaderStep,
+  cp12ClientInstallationDetails,
+      
+    {
+  key: "test_equipment_details",
+  title: "Test Equipment Details",
+  fields: [
+    f("test_equipment_used", "Test Equipment Used", "text", {
+      required: true,
+    }),
+
+    f("serial_number", "Serial No", "text", {
+      required: true,
+    }),
+
+    f("tested_by", "Tested By", "text", {
+      required: true,
+    }),
+
+    f("test_date", "Date", "date", {
+      required: true,
+    }),
+
+    f("retest_date", "Retest Date", "date", {
+      required: true,
+    }),
+  ],
+
+},
+{
+  key: "appliance_register",
+  title: "Appliance Tests",
+  table: {
+    itemType: "appliance",
+    storageKey: "pat_appliances",
+    required: true,
+
+    fields: [
+     f("location", "Location", "select", {
+  required: true,
+  options: [
+    "Garage",
+    "Living room",
+    "Kitchen",
+    "Utility room",
+    "Hallway",
+    "Airing cupboard",
+    "Landing",
+    "Bathroom",
+    "Bedroom",
+    "Loft",
+    "Other",
+  ],
+}),
+
+      f("make", "Make", "text"),
+
+      f("appliance_type", "Type", "text", {
+        required: true,
+      }),
+
+      f("voltage", "Voltage", "number", {
+        unit: "V",
+        defaultValue: "230",
+      }),
+
+      f("serial_number", "Serial No", "text"),
+
+      f("fuse_rating", "Fuse Rating", "select", {
+        options: [
+           "3",
+          "5",
+          "7",
+          "10",
+          "13",
+          "N/A",
         ],
-        true,
-        "pat_appliances",
-      ),
-      {
-        key: "summary",
-        title: "Summary",
-        fields: [
-          f("total_appliances_tested", "Total appliances tested", "number", {
-            readOnly: true,
-          }),
-          f("total_passed", "Total passed", "number", { readOnly: true }),
-          f("total_failed", "Total failed", "number", { readOnly: true }),
+      }),
+
+      f("rating", "Rating", "select",{
+         options: [
+           "3",
+          "5",
+          "7",
+          "10",
+          "13",
+          "N/A",
         ],
-      },
-      {
-        key: "declaration",
-        title: "Declaration",
-        fields: [
-          f("tester_name", "Tester name", "text", { required: true }),
-          f("tester_signature", "Signature", "signature", {
-            required: true,
-            signatureType: "engineer",
-          }),
-          f("declaration_date", "Date", "date", { required: true }),
-        ],
-      },
+      }),
+
+      f("earth_continuity", "Earth Continuity", "select", {
+        options: ["Pass", "Fail", "N/A"],
+        required: true,
+      }),
+
+      f("insulation_resistance", "Insulation Resistance", "select", {
+        options: ["Pass", "Fail", "N/A"],
+        required: true,
+      }),
+
+      f("plug_flex_body", "Plug Flex and Body", "select", {
+  options: ["Pass", "Fail", "N/A"],
+  required: true,
+}),
+
+f("safe_to_use", "Safe to Use", "select", {
+  options: ["Yes", "No"],
+  required: true,
+}),
+
+f("notes", "Notes / Failure Details", "textarea"),
     ],
   },
-  {
-    type: "smoke_alarm",
-    shortTitle: "Smoke Alarm",
-    title: "Smoke Alarm Design/Commissioning",
-    templateMatchers: ["smoke alarm"],
-    steps: [
-      clientEngineer,
+},
+
+{
+  key: "declaration",
+  title: "Declaration & Signature",
+  fields: [
+    f(
+      "data_protection_acknowledgement",
+      "I acknowledge the data protection statement",
+      "checkbox",
+      { required: true },
+    ),
+
+    f("engineer_name", "Engineer name", "text", {
+      readOnly: true,
+    }),
+
+    f("engineer_address", "Engineer address", "textarea", {
+      readOnly: true,
+    }),
+
+    f("engineer_postcode", "Engineer postcode", "text", {
+      readOnly: true,
+    }),
+
+    f(
+      "engineer_gas_safe_number",
+      "Registration number",
+      "text",
       {
-        key: "system_design",
-        title: "System Design",
-        fields: [
-          f("grade", "Grade", "select", {
-            options: ["A", "B", "C", "D", "E", "F"],
-            required: true,
-          }),
-          f("category", "Category", "select", {
-            options: ["LD1", "LD2", "LD3", "PD1", "PD2"],
-            required: true,
-          }),
-          f("standard_applied", "Standard applied", "text", {
-            defaultValue: "BS 5839-6",
-            required: true,
-          }),
-        ],
+        readOnly: true,
       },
-      tableStep(
-        "device_schedule",
-        "Device Schedule",
-        "device",
-        [
-          f("device_reference_id", "Device reference/ID", "text", {
-            required: true,
-          }),
-          f("location", "Location/Room", "text", { required: true }),
-          f("device_type", "Device type", "select", {
-            options: ["Smoke", "Heat", "Multi-sensor", "CO"],
-            required: true,
-          }),
-          f("power_source", "Power source", "select", {
-            options: ["Mains + battery backup", "Battery only"],
-            required: true,
-          }),
-          f("interlinked", "Interlinked?", "boolean"),
-          f("interlink_method", "Interlink method", "select", {
-            options: ["Wired", "Radio"],
-          }),
-          f("function_test_result", "Function test result", "select", {
-            options: ["Pass", "Fail"],
-            required: true,
-          }),
-          f("date_installed", "Date installed", "date", { required: true }),
-        ],
-        true,
-        "alarms",
-      ),
+    ),
+
+    f("engineer_phone", "Engineer phone number", "text", {
+      readOnly: true,
+    }),
+
+    f(
+      "customer_unavailable_to_sign",
+      "Customer unavailable to sign",
+      "select",
       {
-        key: "commissioning_checks",
-        title: "Commissioning Checks",
-        fields: [
-          f("interconnection_test", "Interconnection test", "select", {
-            options: ["Pass", "Fail"],
-            required: true,
-          }),
-          f("sound_level_adequate", "Sound level adequate?", "boolean", {
-            required: true,
-          }),
-          f(
-            "manufacturer_instructions_left",
-            "Manufacturer instructions left?",
-            "boolean",
-            { required: true },
-          ),
-        ],
+        options: ["No", "Yes"],
+        defaultValue: "No",
       },
-      {
-        key: "declaration",
-        title: "Declaration",
-        fields: [
-          f("engineer_name_declaration", "Engineer name", "text", {
-            required: true,
-          }),
-          f("engineer_signature", "Signature", "signature", {
-            required: true,
-            signatureType: "engineer",
-          }),
-          f("next_service_due", "Next service due", "date", { required: true }),
-        ],
-      },
-    ],
-  },
+    ),
+f("additional_notes", "Additional Notes", "textarea"),
+    f(
+      "customer_unavailable_reason",
+      "Reason customer unavailable to sign",
+      "textarea",
+    ),
+
+    f("customer_signature", "Customer signature", "signature", {
+      signatureType: "customer",
+    }),
+
+    f("engineer_signature", "Engineer signature", "signature", {
+      required: true,
+      signatureType: "engineer",
+    }),
+  ],
+},
+    ]
+    },
+  
   {
     type: "cp12",
     shortTitle: "CP12",
@@ -2638,9 +2675,21 @@ export const electricalCertificates: ElectricalCertificateDefinition[] = [
           f("date", "Date", "date", { required: true }),
         ],
       },
-    ],
+        ],
   },
 ];
+
+const enabledCertificateTypes = new Set<ElectricalCertificateType>([
+  "cp12",
+  "gas_breakdown",
+  "gas_warning_notice",
+  "pat",
+]);
+
+export const electricalCertificates =
+  allCertificateDefinitions.filter((definition) =>
+    enabledCertificateTypes.has(definition.type),
+  );
 
 export function getElectricalDefinition(type?: string | null) {
   return (

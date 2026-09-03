@@ -685,16 +685,13 @@ export const ui: Record<string, any> = StyleSheet.create({
   pressed: { opacity: 0.72 },
   /* Drawer styles */
   drawerContainer: {
-    ...Platform.select({
-      web: { position: "fixed" },
-      default: { position: "absolute" },
-    }),
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
+  position: "absolute",
+  left: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 9999,
+},
   drawerOverlay: {
     position: "absolute",
     left: 0,
