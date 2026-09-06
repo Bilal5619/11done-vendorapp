@@ -297,6 +297,17 @@ export default function CertificatesScreen() {
 
     return uploadedPhoto.file_url;
   }
+  function makeAutomaticCertificateReference(
+  certificate: CertificateRecord | null,
+) {
+  if (!certificate?.id) {
+    return "";
+  }
+
+  return `11D-${new Date().getFullYear()}-${String(
+    certificate.id,
+  ).padStart(7, "0")}`;
+}
   function createLocalDraft(
     nextDefinition: ElectricalCertificateDefinition,
     templateId: string | number,
@@ -810,7 +821,14 @@ setNotice("Standalone certificate draft created.");
               {step.fields.map((field) => (
                 <QuestionField
                   key={field.key}
-                  field={field}
+                 field={{
+  ...field,
+  readOnly:
+    field.key === "certificate_reference_number" &&
+    answers[`${step.key}.auto_certificate_reference`] === "1"
+      ? true
+      : field.readOnly,
+}}
                   value={answers[answerKey(step, field)] ?? ""}
                   errors={getFieldErrors(step, field, fieldErrors)}
                   onChange={(value) => {
@@ -821,6 +839,13 @@ setNotice("Standalone certificate draft created.");
                         ...current,
                         [answerKey(step, field)]: value,
                       };
+                      if (field.key === "auto_certificate_reference") {
+  const checked = value === "1";
+
+  next[`${step.key}.certificate_reference_number`] = checked
+    ? makeAutomaticCertificateReference(certificate)
+    : "";
+}
                       if (step.key === "final_checks") {
                         if (field.key === "co_alarm_fitted" && value !== "Yes")
                           next["final_checks.co_alarm_working"] = "";

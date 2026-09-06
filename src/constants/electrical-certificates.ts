@@ -148,7 +148,20 @@ const cp12HeaderStep: ElectricalStep = {
       defaultValue: "CP12 / Landlord Gas Safety Record",
     }),
     f("booking_id", "Job / Booking ID", "text"),
-    f("certificate_reference_number", "Certificate reference number", "text"),
+   f(
+  "certificate_reference_number",
+  "Certificate Reference Number",
+  "text",
+  {
+    required: true,
+  }
+),
+
+f(
+  "auto_certificate_reference",
+  "Select to fill automatically",
+  "checkbox"
+),
   ],
 };
 
