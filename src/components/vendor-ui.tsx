@@ -19,10 +19,18 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAccountStatus } from "@/context/AccountStatusContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificationMonitor } from "@/context/NotificationMonitorContext";
+
+/** Screens a vendor can still reach while their account details are incomplete. */
+const routesAllowedWhileIncomplete: AppRoute[] = [
+  "/account-setup",
+  "/profile",
+  "/notifications",
+];
 
 export const fontFamily = Platform.select({
   web: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -54,7 +62,14 @@ export function ProtectedScreen({
   scrollRef?: RefObject<ScrollView | null>;
 }>) {
   const { token, isRestoring } = useAuth();
+  const { isComplete, isLoading: isCheckingAccount } = useAccountStatus();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const isBlocked =
+    !isComplete &&
+    !isCheckingAccount &&
+    !routesAllowedWhileIncomplete.includes(activeRoute);
 
   useEffect(() => {
     if (!isRestoring && !token) {
@@ -62,32 +77,45 @@ export function ProtectedScreen({
     }
   }, [isRestoring, token]);
 
+  useEffect(() => {
+    // New vendors must finish their account details before using the rest of
+    // the app.
+    if (token && isBlocked) {
+      router.replace("/account-setup");
+    }
+  }, [isBlocked, token]);
+
   if (isRestoring) {
     return <LoadingScreen />;
   }
 
+  // Android draws edge to edge, so the last card would otherwise sit under the
+  // back / home / recent apps bar. Clear it with the real bottom inset.
+  const bottomInset = { paddingBottom: ui.content.paddingBottom + insets.bottom };
+
   const content = scroll ? (
     <ScrollView
       ref={scrollRef}
-      contentContainerStyle={ui.content}
+      contentContainerStyle={[ui.content, bottomInset]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={ui.content}>{children}</View>
+    <View style={[ui.content, ui.staticContent, bottomInset]}>{children}</View>
   );
 
   return (
     <View style={ui.screen}>
-      <SafeAreaView style={ui.safeArea}>
+      <SafeAreaView style={ui.safeArea} edges={["top", "left", "right"]}>
         <Header title={title} onOpenDrawer={() => setIsDrawerOpen(true)} />
 
         <KeyboardAvoidingView
           style={ui.keyboardArea}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
           {content}
         </KeyboardAvoidingView>
@@ -508,6 +536,7 @@ export const ui: Record<string, any> = StyleSheet.create({
     paddingBottom: 100,
     gap: 14,
   },
+  staticContent: { flex: 1 },
   introCard: {
     backgroundColor: "#101826",
     borderRadius: 16,

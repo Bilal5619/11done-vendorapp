@@ -1,5 +1,12 @@
-import api, { unwrapData } from './client';
+import api, { toFormDataAsync, unwrapData } from './client';
 import type { Vendor } from '@/types/vendor';
+
+export type ProfilePhotoUpload = {
+  uri: string;
+  name: string;
+  type?: string;
+  file?: Blob;
+};
 
 export type UpdateProfilePayload = Partial<{
   name: string;
@@ -17,6 +24,18 @@ export async function getProfile() {
 
 export async function updateProfile(payload: UpdateProfilePayload) {
   return unwrapData<{ vendor?: Vendor } | Vendor>(await api.post('/profile', payload));
+}
+
+export async function uploadProfilePhoto(photo: ProfilePhotoUpload) {
+  return unwrapData<{ vendor?: Vendor } | Vendor>(
+    await api.post('/profile/photo', await toFormDataAsync({ photo }), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  );
+}
+
+export async function deleteProfilePhoto() {
+  return unwrapData<{ vendor?: Vendor } | Vendor>(await api.delete('/profile/photo'));
 }
 
 export async function changePassword(payload: { current_password: string; password: string; password_confirmation: string }) {

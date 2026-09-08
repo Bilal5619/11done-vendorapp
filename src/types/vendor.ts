@@ -17,12 +17,47 @@ export type VendorRegistrationNumber = {
   registration_authority?: string | null;
   expiry_date?: string | null;
 };
+
+/** Accreditation bodies a certificate can require before it may be created. */
+export type AccreditationBody = "gas_safe" | "niceic";
+
+export const accreditationLabels: Record<AccreditationBody, string> = {
+  gas_safe: "Gas Safe",
+  niceic: "NICEIC",
+};
+
+const accreditationMatchers: Record<AccreditationBody, RegExp> = {
+  gas_safe: /gas\s*safe/i,
+  niceic: /niceic|neicic/i,
+};
+
+/**
+ * Gas certificates must carry the vendor's Gas Safe number and electrical ones
+ * their NICEIC number, so read it back out of the accreditations the vendor
+ * saved during account setup.
+ */
+export function findAccreditationNumber(
+  registrations: VendorRegistrationNumber[] | undefined,
+  body: AccreditationBody
+) {
+  const matcher = accreditationMatchers[body];
+  const match = registrations?.find((registration) =>
+    [registration.registration_authority, registration.title, registration.category].some(
+      (value) => typeof value === 'string' && matcher.test(value)
+    )
+  );
+
+  return firstString(match?.registration_number, match?.number);
+}
 export type Vendor = {
   id: number;
   username?: string;
   email?: string;
   phone?: string;
   status?: number;
+  /** Company logo stored on the vendor record; printed on generated certificates. */
+  photo?: string | null;
+  photo_url?: string | null;
   business_type?: string | null;
   right_to_work_is_british?: boolean;
   service_category?: string | null;

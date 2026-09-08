@@ -1,10 +1,11 @@
 import api, { toFormDataAsync, unwrapData } from './client';
-import type { AccountSetupTask, Vendor, VendorDocument } from '@/types/vendor';
+import type { AccountSetupTask, Vendor, VendorDocument, VendorRegistrationNumber } from '@/types/vendor';
 
 export type AccountSetupResponse = {
   vendor?: Vendor;
   tasks?: AccountSetupTask[];
   documents?: VendorDocument[];
+  registration_numbers?: VendorRegistrationNumber[];
   verification_status?: string;
 };
 
@@ -25,6 +26,11 @@ export type UploadDocumentPayload = {
 
 export async function getAccountSetup() {
   return unwrapData<AccountSetupResponse>(await api.get('/account-setup'));
+}
+
+export async function getVendorRegistrationNumbers() {
+  const response = unwrapData<AccountSetupResponse>(await api.get('/account-setup'));
+  return response.registration_numbers ?? [];
 }
 
 export async function getVendorDocuments() {

@@ -952,13 +952,6 @@ const allCertificateDefinitions: ElectricalCertificateDefinition[] = [
         required: true,
       }),
 
-      f("voltage", "Voltage", "number", {
-        unit: "V",
-        defaultValue: "230",
-      }),
-
-      f("serial_number", "Serial No", "text"),
-
       f("fuse_rating", "Fuse Rating", "select", {
         options: [
            "3",
@@ -966,17 +959,7 @@ const allCertificateDefinitions: ElectricalCertificateDefinition[] = [
           "7",
           "10",
           "13",
-          "N/A",
-        ],
-      }),
-
-      f("rating", "Rating", "select",{
-         options: [
-           "3",
-          "5",
-          "7",
-          "10",
-          "13",
+          "Limitation",
           "N/A",
         ],
       }),
@@ -991,8 +974,8 @@ const allCertificateDefinitions: ElectricalCertificateDefinition[] = [
         required: true,
       }),
 
-      f("plug_flex_body", "Plug Flex and Body", "select", {
-  options: ["Pass", "Fail", "N/A"],
+      f("plug_flex_body", "Plug Fuse & Body Visual", "select", {
+  options: ["Pass", "Fail", "Limitation", "N/A"],
   required: true,
 }),
 
@@ -1008,37 +991,32 @@ f("notes", "Notes / Failure Details", "textarea"),
 
 {
   key: "declaration",
-  title: "Declaration & Signature",
+  title: "Company Details & Signature",
   fields: [
-    f(
-      "data_protection_acknowledgement",
-      "I acknowledge the data protection statement",
-      "checkbox",
-      { required: true },
-    ),
-
-    f("engineer_name", "Engineer name", "text", {
+    // The engineer is already recorded as "Tested By" in the test equipment
+    // step, so the block printed at the top of the certificate is the company.
+    f("engineer_name", "Company name", "text", {
       readOnly: true,
     }),
 
-    f("engineer_address", "Engineer address", "textarea", {
+    f("engineer_address", "Company address", "textarea", {
       readOnly: true,
     }),
 
-    f("engineer_postcode", "Engineer postcode", "text", {
+    f("engineer_postcode", "Company postcode", "text", {
       readOnly: true,
     }),
 
     f(
-      "engineer_gas_safe_number",
-      "Registration number",
+      "engineer_niceic_number",
+      "NICEIC registration number",
       "text",
       {
         readOnly: true,
       },
     ),
 
-    f("engineer_phone", "Engineer phone number", "text", {
+    f("engineer_phone", "Company phone number", "text", {
       readOnly: true,
     }),
 
@@ -1163,13 +1141,6 @@ f("additional_notes", "Additional Notes", "textarea"),
         key: "declaration",
         title: "Declaration & Signature",
         fields: [
-          f(
-            "data_protection_acknowledgement",
-            "I acknowledge the data protection statement",
-            "checkbox",
-            { required: true },
-          ),
-
           f("engineer_name", "Engineer name", "text", {
             readOnly: true,
           }),
@@ -1505,13 +1476,6 @@ f("additional_notes", "Additional Notes", "textarea"),
         key: "declaration",
         title: "Declaration & Signature",
         fields: [
-          f(
-            "data_protection_acknowledgement",
-            "I acknowledge the data protection statement",
-            "checkbox",
-            { required: true },
-          ),
-
           f("engineer_name", "Engineer name", "text", {
             readOnly: true,
           }),
