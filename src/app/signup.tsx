@@ -78,7 +78,7 @@ export default function SignupScreen() {
       <View style={styles.bottomPanel} />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}

@@ -1,9 +1,10 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { changePassword, getProfile, logoutVendor, updateProfile } from '@/api/profileApi';
+import { changePassword, deleteProfilePhoto, getProfile, logoutVendor, updateProfile, uploadProfilePhoto } from '@/api/profileApi';
 import { getServiceCategories, type ServiceCategory } from '@/api/authApi';
 import { normalizeApiError } from '@/api';
 import { Card, ErrorState, ProtectedScreen, SectionIntro, ui } from '@/components/vendor-ui';
@@ -24,6 +25,7 @@ export default function ProfileScreen() {
   const [passwords, setPasswords] = useState({ current_password: '', password: '', password_confirmation: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -128,6 +130,62 @@ export default function ProfileScreen() {
     }
   }
 
+  async function savePhoto(uri: string) {
+    setIsUploadingPhoto(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await uploadProfilePhoto(await buildPhotoUpload(uri));
+      setVendor(getVendorFromResponse(response));
+      setSuccess('Company logo updated. It will be printed on your certificates.');
+    } catch (uploadError) {
+      setError(normalizeApiError(uploadError, 'Logo upload failed.').message);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
+  async function takeLogoPhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Camera permission required', 'Please allow camera access to capture your company logo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      await savePhoto(result.assets[0].uri);
+    }
+  }
+
+  async function chooseLogoPhoto() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Photo permission required', 'Please allow photo access to select your company logo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      await savePhoto(result.assets[0].uri);
+    }
+  }
+
+  async function removeLogoPhoto() {
+    setIsUploadingPhoto(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await deleteProfilePhoto();
+      setVendor(getVendorFromResponse(response));
+      setSuccess('Company logo removed.');
+    } catch (removeError) {
+      setError(normalizeApiError(removeError, 'Unable to remove the logo.').message);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
   async function handleLogout() {
     try {
       await logoutVendor();
@@ -138,6 +196,8 @@ export default function ProfileScreen() {
     router.replace('/');
   }
 
+  const logoUri = vendor?.photo_url ?? vendor?.photo ?? '';
+
   return (
     <ProtectedScreen title="Profile" activeRoute="/profile" scrollRef={scrollViewRef}>
       <StatusBar style="light" />
@@ -146,6 +206,39 @@ export default function ProfileScreen() {
       {isLoading ? <View style={ui.stateCard}><ActivityIndicator color="#ff6a00" /></View> : null}
       {error ? <ErrorState message={error} onRetry={loadProfile} /> : null}
       {success ? <Card><Text style={[ui.value, { color: '#17c7a3' }]}>{success}</Text></Card> : null}
+
+      <Card style={focusSection === 'logo' ? styles.focusCard : undefined}>
+        <View onLayout={(event: LayoutChangeEvent) => { sectionPositions.current.logo = event.nativeEvent.layout.y; }}>
+          <Text style={ui.cardTitle}>Company logo</Text>
+          <Text style={ui.muted}>
+            Upload your company logo. It is printed in the header of every certificate you generate, next to the Gas Safe logo.
+          </Text>
+
+          {logoUri ? (
+            <Image source={{ uri: logoUri }} style={styles.logoPreview} resizeMode="contain" />
+          ) : (
+            <View style={styles.logoPlaceholder}>
+              <Text style={styles.logoPlaceholderText}>No logo uploaded yet</Text>
+            </View>
+          )}
+
+          <View style={ui.wrapRow}>
+            <Pressable disabled={isUploadingPhoto} onPress={takeLogoPhoto} style={[ui.secondaryButton, styles.logoButton]}>
+              <Text style={ui.secondaryButtonText}>{logoUri ? 'Retake photo' : 'Take photo'}</Text>
+            </Pressable>
+            <Pressable disabled={isUploadingPhoto} onPress={chooseLogoPhoto} style={[ui.secondaryButton, styles.logoButton]}>
+              <Text style={ui.secondaryButtonText}>{logoUri ? 'Choose another' : 'Choose photo'}</Text>
+            </Pressable>
+            {logoUri ? (
+              <Pressable disabled={isUploadingPhoto} onPress={removeLogoPhoto} style={[ui.secondaryButton, styles.logoButton]}>
+                <Text style={[ui.secondaryButtonText, { color: '#ff8585' }]}>Remove</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {isUploadingPhoto ? <ActivityIndicator color="#ff6a00" style={{ marginTop: 10 }} /> : null}
+        </View>
+      </Card>
 
       <Card style={focusSection === 'profile' ? styles.focusCard : undefined}>
         <Text style={ui.cardTitle}>Vendor details</Text>
@@ -220,7 +313,19 @@ const styles = StyleSheet.create({
   categoryName: { color: '#d6deeb', fontSize: 13, fontWeight: '800', flex: 1 },
   categoryNameSelected: { color: '#ffd5b8' },
   categoryError: { color: '#ff8585', fontSize: 12, fontWeight: '700' },
+  logoPreview: { width: '100%', height: 150, borderRadius: 12, marginVertical: 12, backgroundColor: '#ffffff' },
+  logoPlaceholder: { width: '100%', height: 150, borderRadius: 12, marginVertical: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#2b3b53', alignItems: 'center', justifyContent: 'center' },
+  logoPlaceholderText: { color: '#8f99aa', fontSize: 13, fontWeight: '700' },
+  logoButton: { flexGrow: 1, flexBasis: 150 },
 });
+
+async function buildPhotoUpload(uri: string) {
+  const extension = uri.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+  const type = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+  const file = Platform.OS === 'web' ? await fetch(uri).then((response) => response.blob()) : undefined;
+
+  return { uri, name: `vendor-logo-${Date.now()}.${extension}`, type, file };
+}
 
 function Input({ label, value, onChangeText, secure }: { label: string; value?: string; onChangeText: (value: string) => void; secure?: boolean }) {
   return (

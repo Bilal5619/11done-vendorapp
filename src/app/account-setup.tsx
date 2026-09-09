@@ -27,6 +27,7 @@ import {
   StatusPill,
   ui,
 } from "@/components/vendor-ui";
+import { useAccountStatus } from "@/context/AccountStatusContext";
 import type { AccountSetupTask } from "@/types/vendor";
 
 type UploadFile = {
@@ -60,6 +61,7 @@ const taskLabels: Record<string, string> = {
 };
 
 export default function AccountSetupScreen() {
+  const accountStatus = useAccountStatus();
   const [tasks, setTasks] = useState<AccountSetupTask[]>([]);
   const [documents, setDocuments] = useState<
     NonNullable<AccountSetupTask["document"]>[]
@@ -112,6 +114,8 @@ export default function AccountSetupScreen() {
     });
   }, [documents, tasks]);
 
+  const refreshAccountStatus = accountStatus.refresh;
+
   const loadSetup = useCallback(async () => {
     setIsLoading(true);
     setError("");
@@ -122,6 +126,8 @@ export default function AccountSetupScreen() {
       setRightToWorkIsBritish(
         response.vendor?.right_to_work_is_british === true,
       );
+      // Keep the app-wide gate in step with what was just uploaded.
+      void refreshAccountStatus();
     } catch (loadError) {
       setError(normalizeApiError(loadError).message);
       setTasks([]);
@@ -130,7 +136,7 @@ export default function AccountSetupScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshAccountStatus]);
 
   useEffect(() => {
     const timer = setTimeout(loadSetup, 0);
@@ -253,6 +259,12 @@ export default function AccountSetupScreen() {
 
   async function handleAddAccreditation() {
     const form = forms.accreditation ?? {};
+    if (!form.registration_authority?.trim()) {
+      setError(
+        "Please choose the registration authority (Gas Safe or NICEIC) before saving.",
+      );
+      return;
+    }
     if (!form.registration_number?.trim()) {
       setError("Please enter a registration number before saving.");
       return;
@@ -265,7 +277,7 @@ export default function AccountSetupScreen() {
       await addRegistrationNumber({
         category: "accreditation",
 
-        title: "Accreditation Certification",
+        title: form.registration_authority.trim(),
 
         registration_number: form.registration_number.trim(),
 
@@ -365,6 +377,16 @@ export default function AccountSetupScreen() {
         title="Account Setup Tasks"
         text="Upload the documents required for verification so they can be reviewed by the admin team."
       />
+
+      {!accountStatus.isComplete && accountStatus.outstandingLabels.length ? (
+        <Card>
+          <Text style={ui.cardTitle}>Finish your account details</Text>
+          <Text style={ui.muted}>
+            Jobs, certificates and invoices unlock once these are done:{" "}
+            {accountStatus.outstandingLabels.join(", ")}.
+          </Text>
+        </Card>
+      ) : null}
 
       {error ? <ErrorState message={error} onRetry={loadSetup} /> : null}
       {success ? (
@@ -547,18 +569,20 @@ function TaskFields({
     return (
       <View style={{ gap: 10 }}>
         <Text style={ui.muted}>
-          Optional accreditation, certification, licence or professional
-          registration.
+          Your Gas Safe number is printed on every gas certificate and your
+          NICEIC number on every electrical certificate, so add the body you are
+          registered with before creating certificates.
         </Text>
+        <SetupOptions
+          label="Registration authority"
+          options={accreditationAuthorities}
+          value={form.registration_authority}
+          onChange={(value) => change("registration_authority", value)}
+        />
         <SetupInput
           label="Registration number"
           value={form.registration_number}
           onChangeText={(value) => change("registration_number", value)}
-        />
-        <SetupInput
-          label="Registration authority"
-          value={form.registration_authority}
-          onChangeText={(value) => change("registration_authority", value)}
         />
         <SetupInput
           label="Expiry date"
@@ -820,6 +844,54 @@ function isDocumentExpired(expiryDate?: string | null) {
   ].join("-");
 
   return dateOnly < today;
+}
+
+const accreditationAuthorities = ["Gas Safe", "NICEIC", "Other"];
+
+function SetupOptions({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={ui.label}>{label}</Text>
+      <View style={ui.wrapRow}>
+        {options.map((option) => {
+          const selected = value === option;
+          return (
+            <Pressable
+              key={option}
+              onPress={() => onChange(option)}
+              style={[
+                ui.secondaryButton,
+                { flexGrow: 1, flexBasis: 100 },
+                selected && {
+                  borderColor: "#ff8d42",
+                  backgroundColor: "#2b211c",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  ui.secondaryButtonText,
+                  selected && { color: "#ffd5b8" },
+                ]}
+              >
+                {option}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 function SetupInput({

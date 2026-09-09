@@ -42,8 +42,13 @@ import {
   type CertificateTemplate,
   type UpdateCertificatePayload,
 } from "@/api/certificatesApi";
+import { getVendorRegistrationNumbers } from "@/api/accountSetupApi";
 import type { FieldErrors } from "@/api/client";
-import { getJob } from "@/api/jobsApi";
+import {
+  buildAppointmentInvoicePayload,
+  createAppointmentInvoice,
+  getJob,
+} from "@/api/jobsApi";
 import {
   Card,
   ErrorState,
@@ -60,8 +65,15 @@ import {
   type ElectricalStep,
 } from "@/constants/electrical-certificates";
 import { useAuth } from "@/context/AuthContext";
-import type { JobDetail, Vendor } from "@/types/vendor";
+import type {
+  AccreditationBody,
+  JobDetail,
+  Vendor,
+  VendorRegistrationNumber,
+} from "@/types/vendor";
 import {
+  accreditationLabels,
+  findAccreditationNumber,
   getJobAppointmentDate,
   getJobBookingId,
   getJobCustomerName,
@@ -79,6 +91,19 @@ import {
 type AnswerMap = Record<string, string>;
 type TableMap = Record<string, AnswerMap[]>;
 type SignatureUpload = { uri: string; name: string; type: string; file?: Blob };
+/**
+ * Gas paperwork is colour coded in Gas Safe yellow and electrical paperwork in
+ * NICEIC red, matching the printed certificates.
+ */
+const categoryAccents: Record<string, { text: string; badge: string }> = {
+  "Domestic Gas Certificates": { text: "#FFD200", badge: "#3d3410" },
+  "Commercial Gas Reports": { text: "#FFD200", badge: "#3d3410" },
+  "Electrical Reports": { text: "#E4022D", badge: "#3d1119" },
+  "Other Reports": { text: "#79b9ff", badge: "#132b46" },
+};
+
+const defaultCategoryAccent = categoryAccents["Other Reports"];
+
 const MISSING_SITE_ADDRESS_MESSAGE =
   "This job is missing the site address. Please enter the site address before generating the certificate.";
 
@@ -111,24 +136,33 @@ export default function CertificatesScreen() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [notice, setNotice] = useState("");
+  const [registrationNumbers, setRegistrationNumbers] = useState<
+    VendorRegistrationNumber[]
+  >([]);
+  const [isInvoicePromptOpen, setIsInvoicePromptOpen] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError("");
     setFieldErrors({});
     try {
-      const [nextTemplates, nextCertificates, jobResponse] = await Promise.all([
-        getCertificateTemplates(),
-        bookingId ? getBookingCertificates(bookingId) : Promise.resolve([]),
-        bookingId ? getJob(bookingId) : Promise.resolve(null),
-      ]);
+      const [nextTemplates, nextCertificates, jobResponse, nextRegistrations] =
+        await Promise.all([
+          getCertificateTemplates(),
+          bookingId ? getBookingCertificates(bookingId) : Promise.resolve([]),
+          bookingId ? getJob(bookingId) : Promise.resolve(null),
+          // Accreditation numbers live on account setup, not on /me.
+          getVendorRegistrationNumbers().catch(() => []),
+        ]);
       const nextJob = getJobFromResponse(jobResponse);
+      setRegistrationNumbers(nextRegistrations);
       setTemplates(nextTemplates);
       setCertificates(nextCertificates.filter((item) => inferDefinition(item)));
       setJob(nextJob);
       if (params.certificate_id) {
         const response = await getCertificate(params.certificate_id);
-        openEditor(response.certificate, nextJob);
+        openEditor(response.certificate, nextJob, nextRegistrations);
       }
     } catch (loadError) {
       setError(
@@ -151,7 +185,11 @@ export default function CertificatesScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  function openEditor(next: CertificateRecord, selectedJob = job) {
+  function openEditor(
+    next: CertificateRecord,
+    selectedJob = job,
+    registrations = registrationNumbers,
+  ) {
     const nextDefinition = inferDefinition(next);
     if (!nextDefinition) {
       setError(
@@ -205,7 +243,13 @@ export default function CertificatesScreen() {
       nextAnswers["client_engineer.installation_address"] || savedSiteAddress;
     nextAnswers["client_engineer.postcode"] =
       nextAnswers["client_engineer.postcode"] || next.site_postcode || "";
-    mergeJobPrefill(nextAnswers, nextDefinition, selectedJob, vendor);
+    mergeJobPrefill(
+      nextAnswers,
+      nextDefinition,
+      selectedJob,
+      vendor,
+      registrations,
+    );
     nextDefinition.steps.forEach((step) =>
       step.fields?.forEach((field) => {
         if (!field.signatureType) return;
@@ -346,6 +390,16 @@ export default function CertificatesScreen() {
       );
       return;
     }
+    const requiredAccreditation = getRequiredAccreditation(nextDefinition);
+    if (
+      requiredAccreditation &&
+      !findAccreditationNumber(registrationNumbers, requiredAccreditation)
+    ) {
+      setError(
+        `Add your ${accreditationLabels[requiredAccreditation]} registration number under Account Setup > Accreditation before creating a ${nextDefinition.title}.`,
+      );
+      return;
+    }
     await runSaving(async () => {
       if (bookingId) {
         const response = await createCertificateDraft(bookingId, template.id);
@@ -478,8 +532,12 @@ setNotice("Standalone certificate draft created.");
       engineer_registration_number:
         answers["client_engineer.registration_number"] ||
         baseCertificate?.engineer_registration_number,
-      engineer_gas_safe_number: baseCertificate?.engineer_gas_safe_number,
-      engineer_niceic_number: baseCertificate?.engineer_niceic_number,
+      engineer_gas_safe_number:
+        answers["declaration.engineer_gas_safe_number"] ||
+        baseCertificate?.engineer_gas_safe_number,
+      engineer_niceic_number:
+        answers["declaration.engineer_niceic_number"] ||
+        baseCertificate?.engineer_niceic_number,
       engineer_napit_number: baseCertificate?.engineer_napit_number,
     };
     baseCertificate?.template?.field_schema?.forEach((field) => {
@@ -611,9 +669,32 @@ setNotice("Standalone certificate draft created.");
       );
       setCertificate(response.certificate);
       setNotice("Certificate completed and PDF generated.");
+      // Offer the invoice on this screen instead of making the vendor find the
+      // invoice option after the certificate is done.
+      if (job) setIsInvoicePromptOpen(true);
       const url = response.certificate.pdf_url ?? response.certificate.url;
       if (url) await Linking.openURL(String(url));
     });
+  }
+
+  async function generateInvoice() {
+    if (!job) return;
+    setIsCreatingInvoice(true);
+    setError("");
+    try {
+      await createAppointmentInvoice(
+        job.id,
+        buildAppointmentInvoicePayload(job),
+      );
+      setIsInvoicePromptOpen(false);
+      setNotice("Certificate completed and invoice created.");
+    } catch (invoiceError) {
+      setError(
+        formatApiError(invoiceError, "The invoice could not be created."),
+      );
+    } finally {
+      setIsCreatingInvoice(false);
+    }
   }
 
   async function saveSignature(field: ElectricalField, file: SignatureUpload) {
@@ -878,6 +959,10 @@ setNotice("Standalone certificate draft created.");
                           field.key === "installation_same_as_client_address"
                         ) {
                           if (value === "1") {
+                            next["client_installation_details.occupier_name"] =
+                              next[
+                                "client_installation_details.client_name"
+                              ] || "";
                             next[
                               "client_installation_details.installation_address_line_1"
                             ] =
@@ -926,6 +1011,7 @@ setNotice("Standalone certificate draft created.");
                             string,
                             string
                           > = {
+                            client_name: "occupier_name",
                             client_address_line_1:
                               "installation_address_line_1",
                             client_address_line_2:
@@ -1142,9 +1228,14 @@ setNotice("Standalone certificate draft created.");
             </Card>
           ) : null}
           <View style={styles.certificateGrid}>
-            {certificateGroups.map((group, groupIndex) => (
+            {certificateGroups.map((group, groupIndex) => {
+              const accent =
+                categoryAccents[group.title] ?? defaultCategoryAccent;
+              return (
               <View key={group.title} style={styles.categorySection}>
-                <Text style={styles.categoryTitle}>{group.title}</Text>
+                <Text style={[styles.categoryTitle, { color: accent.text }]}>
+                  {group.title}
+                </Text>
                 <View style={styles.categoryItems}>
                   {group.definitions.map((item, itemIndex) => {
                     const available = templates.some((template) =>
@@ -1162,8 +1253,18 @@ setNotice("Standalone certificate draft created.");
                           isSaving && styles.disabled,
                         ]}
                       >
-                        <View style={styles.certificateIcon}>
-                          <Text style={styles.certificateNumber}>
+                        <View
+                          style={[
+                            styles.certificateIcon,
+                            { backgroundColor: accent.badge },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.certificateNumber,
+                              { color: accent.text },
+                            ]}
+                          >
                             {cardNumber}
                           </Text>
                         </View>
@@ -1192,11 +1293,88 @@ setNotice("Standalone certificate draft created.");
                   })}
                 </View>
               </View>
-            ))}
+              );
+            })}
           </View>
         </>
       )}
+
+      <InvoicePrompt
+        open={isInvoicePromptOpen}
+        job={job}
+        isSaving={isCreatingInvoice}
+        onGenerate={generateInvoice}
+        onClose={() => setIsInvoicePromptOpen(false)}
+      />
     </ProtectedScreen>
+  );
+}
+
+function InvoicePrompt({
+  open,
+  job,
+  isSaving,
+  onGenerate,
+  onClose,
+}: {
+  open: boolean;
+  job: JobDetail | null;
+  isSaving: boolean;
+  onGenerate: () => void;
+  onClose: () => void;
+}) {
+  if (!job) return null;
+
+  const payload = buildAppointmentInvoicePayload(job);
+  const rows: [string, string][] = [
+    ["Booking", String(payload.booking_id ?? "")],
+    ["Service", String(payload.service_title ?? "")],
+    ["Invoice date", String(payload.invoice_date ?? "")],
+    ["Amount", `£${payload.amount}`],
+    ["Platform commission", String(payload.platform_commission ?? "")],
+    ["Commission amount", `£${payload.commission_amount}`],
+    ["Your payout", `£${payload.vendor_payout_amount}`],
+  ];
+
+  return (
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.invoiceBackdrop}>
+        <View style={styles.invoiceDialog}>
+          <Text style={ui.cardTitle}>Generate invoice?</Text>
+          <Text style={ui.muted}>
+            The certificate is done. Create the invoice for this job now.
+          </Text>
+
+          <View style={styles.invoiceRows}>
+            {rows.map(([label, value]) => (
+              <View key={label} style={styles.invoiceRow}>
+                <Text style={ui.label}>{label}</Text>
+                <Text style={ui.value}>{value || "-"}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.actions}>
+            <ActionButton
+              label="Not now"
+              secondary
+              disabled={isSaving}
+              onPress={onClose}
+            />
+            <ActionButton
+              label={isSaving ? "Generating..." : "Generate"}
+              disabled={isSaving}
+              onPress={onGenerate}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -2449,6 +2627,24 @@ function getCertificateCategory(definition: ElectricalCertificateDefinition) {
   return "Other Reports";
 }
 
+/**
+ * Gas certificates cannot be issued without a Gas Safe number, and electrical
+ * ones without an NICEIC number.
+ */
+function getRequiredAccreditation(
+  definition: ElectricalCertificateDefinition,
+): AccreditationBody | null {
+  const category = getCertificateCategory(definition);
+  if (
+    category === "Domestic Gas Certificates" ||
+    category === "Commercial Gas Reports"
+  ) {
+    return "gas_safe";
+  }
+  if (category === "Electrical Reports") return "niceic";
+  return null;
+}
+
 function inferDefinition(certificate: CertificateRecord) {
   const explicit = getElectricalDefinition(certificate.certificate_type);
   if (explicit) return explicit;
@@ -2542,6 +2738,7 @@ function mergeJobPrefill(
   definition: ElectricalCertificateDefinition,
   job: JobDetail | null,
   vendor: Vendor | null,
+  registrations: VendorRegistrationNumber[] = [],
 ) {
   const engineerValues: Record<string, string> = {
     "declaration.engineer_name":
@@ -2553,6 +2750,18 @@ function mergeJobPrefill(
       vendor?.profile?.postcode ?? vendor?.profile?.zip_code ?? "",
 
     "declaration.engineer_phone": vendor?.phone ?? "",
+
+    // Gas certificates print the Gas Safe number, electrical ones the NICEIC
+    // number; both come from the accreditation saved in account setup.
+    "declaration.engineer_gas_safe_number": findAccreditationNumber(
+      registrations,
+      "gas_safe",
+    ),
+
+    "declaration.engineer_niceic_number": findAccreditationNumber(
+      registrations,
+      "niceic",
+    ),
   };
 
   Object.entries(engineerValues).forEach(([key, value]) => {
@@ -3057,6 +3266,30 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   noticeText: { color: "#7debd3", fontSize: 13, fontWeight: "700" },
+  invoiceBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(3,6,12,0.78)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  invoiceDialog: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#22314a",
+    backgroundColor: "#111827",
+    padding: 18,
+    gap: 12,
+  },
+  invoiceRows: { gap: 8 },
+  invoiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   certificateGrid: { gap: 14 },
   categorySection: { gap: 8 },
   categoryTitle: {
