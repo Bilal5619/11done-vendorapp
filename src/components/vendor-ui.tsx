@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
@@ -8,6 +9,7 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Image,
@@ -72,6 +74,29 @@ export type AppRoute =
 export function useBottomSafeArea(extraSpacing: number = 16): number {
   const insets = useSafeAreaInsets();
   return insets.bottom + extraSpacing;
+}
+
+/**
+ * Opens a PDF, map, tel:, or mailto: link safely.
+ *
+ * Every screen used to call `Linking.openURL(...)` directly, unguarded. On
+ * Android, if the device has no app to handle a link (no maps app, no phone
+ * dialer on a tablet, no mail client set up, or the browser briefly can't be
+ * reached), that promise rejects — and with nothing to catch it, the
+ * rejection was unhandled and could bring the whole app down ("keeps
+ * stopping") instead of just failing to open the link. This always resolves
+ * one way or another, showing the user a plain message instead of crashing.
+ */
+export async function openExternalUrl(
+  url: string,
+  failureMessage: string = "This device could not open that. Please try again in a moment.",
+): Promise<void> {
+  if (!url) return;
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert("Could not open this", failureMessage);
+  }
 }
 
 export function ProtectedScreen({

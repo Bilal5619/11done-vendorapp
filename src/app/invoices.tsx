@@ -1,5 +1,4 @@
 import { SymbolView } from 'expo-symbols';
-import * as Linking from 'expo-linking';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -8,7 +7,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { getJobs } from '@/api/jobsApi';
 import { normalizeApiError } from '@/api';
 import { InvoiceForm } from '@/components/invoice-form';
-import { EmptyState, ErrorState, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
+import { EmptyState, ErrorState, openExternalUrl, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
 import type { JobSummary } from '@/types/vendor';
 import {
   getJobAddress,
@@ -116,7 +115,10 @@ function InvoiceJobCard({ job, onChanged }: { job: JobSummary; onChanged: () => 
         {invoicePaidDate ? <Text style={ui.muted}>Paid Date: {invoicePaidDate}</Text> : null}
         <View style={ui.wrapRow}>
           {invoiceUrl ? (
-            <Pressable onPress={() => Linking.openURL(invoiceUrl)} style={ui.secondaryButton}>
+            <Pressable
+              onPress={() => openExternalUrl(invoiceUrl, 'Could not open the invoice.')}
+              style={ui.secondaryButton}
+            >
               <Text style={ui.secondaryButtonText}>View invoice</Text>
             </Pressable>
           ) : null}

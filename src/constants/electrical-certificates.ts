@@ -1033,11 +1033,6 @@ f("notes", "Notes / Failure Details", "textarea"),
       },
     ),
 f("additional_notes", "Additional Notes", "textarea"),
-    f(
-      "customer_unavailable_reason",
-      "Reason customer unavailable to sign",
-      "textarea",
-    ),
 
     f("customer_signature", "Customer signature", "signature", {
       signatureType: "customer",
@@ -1173,11 +1168,6 @@ f("additional_notes", "Additional Notes", "textarea"),
             "Customer unavailable to sign",
             "select",
             { options: ["No", "Yes"], defaultValue: "No" },
-          ),
-          f(
-            "customer_unavailable_reason",
-            "Reason customer unavailable to sign",
-            "textarea",
           ),
           f("customer_signature", "Customer/Landlord signature", "signature", {
             signatureType: "customer",
@@ -1512,12 +1502,6 @@ f("additional_notes", "Additional Notes", "textarea"),
               options: ["No", "Yes"],
               defaultValue: "No",
             },
-          ),
-
-          f(
-            "customer_unavailable_reason",
-            "Reason customer unavailable to sign",
-            "textarea",
           ),
 
           f("customer_signature", "Customer/Landlord signature", "signature", {

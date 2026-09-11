@@ -2,11 +2,11 @@ import { SymbolView } from 'expo-symbols';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getAvailableLeads, getPurchasedLeads, requestLeadRefund, unlockLead, type Lead } from '@/api/leadsApi';
 import { normalizeApiError } from '@/api';
-import { EmptyState, ErrorState, ProtectedScreen, ui } from '@/components/vendor-ui';
+import { EmptyState, ErrorState, openExternalUrl, ProtectedScreen, ui } from '@/components/vendor-ui';
 
 type TabKey = 'available' | 'mine';
 
@@ -184,7 +184,7 @@ function LeadCard({ lead, balance, onChanged }: { lead: Lead; balance: number; o
           <View style={styles.contactActions}>
             {lead.customer_phone ? (
               <Pressable
-                onPress={() => Linking.openURL(`tel:${lead.customer_phone}`)}
+                onPress={() => openExternalUrl(`tel:${lead.customer_phone}`, 'Could not start the call.')}
                 style={({ pressed }) => [styles.contactButton, pressed && ui.pressed]}
               >
                 <Text style={styles.contactButtonText}>Call {lead.customer_phone}</Text>
@@ -192,7 +192,7 @@ function LeadCard({ lead, balance, onChanged }: { lead: Lead; balance: number; o
             ) : null}
             {lead.customer_email ? (
               <Pressable
-                onPress={() => Linking.openURL(`mailto:${lead.customer_email}`)}
+                onPress={() => openExternalUrl(`mailto:${lead.customer_email}`, 'Could not open Mail.')}
                 style={({ pressed }) => [styles.contactButtonAlt, pressed && ui.pressed]}
               >
                 <Text style={styles.contactButtonAltText}>Email</Text>

@@ -2,7 +2,6 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
-import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
@@ -52,6 +51,7 @@ import {
 import {
   Card,
   ErrorState,
+  openExternalUrl,
   ProtectedScreen,
   StatusPill,
   ui,
@@ -631,6 +631,13 @@ setNotice("Standalone certificate draft created.");
     });
   }
 
+  async function openPdfUrl(url: string) {
+    await openExternalUrl(
+      url,
+      "The certificate was generated, but this device could not open it directly. Try again in a moment, or open it from a browser.",
+    );
+  }
+
   async function generatePdf() {
     if (
   !certificate ||
@@ -681,7 +688,7 @@ setNotice("Standalone certificate draft created.");
       // invoice option after the certificate is done.
       if (job) setIsInvoicePromptOpen(true);
       const url = response.certificate.pdf_url ?? response.certificate.url;
-      if (url) await Linking.openURL(String(url));
+      if (url) await openPdfUrl(String(url));
     });
   }
 
@@ -973,12 +980,6 @@ setNotice("Standalone certificate draft created.");
                         ) {
                           next["declaration.customer_signature"] = "";
                         }
-                        if (
-                          field.key === "customer_unavailable_to_sign" &&
-                          value === "No"
-                        ) {
-                          next["declaration.customer_unavailable_reason"] = "";
-                        }
                       }
                       if (step.key === "client_installation_details") {
                         const sameAddress =
@@ -1175,7 +1176,7 @@ setNotice("Standalone certificate draft created.");
                     label="View PDF"
                     secondary
                     onPress={() =>
-                      Linking.openURL(
+                      openPdfUrl(
                         String(certificate.pdf_url ?? certificate.url),
                       )
                     }
@@ -1569,7 +1570,7 @@ function QuestionField({
     );
   if (field.type === "select") {
     return (
-      <DropdownQuestion
+      <ChoiceQuestion
         label={label}
         value={value}
         options={field.options ?? []}
@@ -1675,94 +1676,6 @@ function QuestionField({
           field.readOnly && styles.readOnly,
         ]}
       />
-      <FieldErrorText errors={errors} />
-    </View>
-  );
-}
-function DropdownQuestion({
-  label,
-  value,
-  options,
-  errors = [],
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  errors?: string[];
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <View style={styles.question}>
-      <Text style={styles.questionLabel}>{label}</Text>
-
-      <Pressable
-        onPress={() => setOpen((current) => !current)}
-        style={[
-          ui.input,
-          {
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          },
-        ]}
-      >
-        <Text style={value ? ui.value : ui.muted}>
-          {value || "Select an option"}
-        </Text>
-
-        <SymbolView
-          name={{
-            ios: open ? "chevron.up" : "chevron.down",
-            android: open ? "keyboard_arrow_up" : "keyboard_arrow_down",
-            web: open ? "keyboard_arrow_up" : "keyboard_arrow_down",
-          }}
-          size={20}
-          tintColor="#ff6a00"
-        />
-      </Pressable>
-
-      {open ? (
-        <View
-          style={{
-            marginTop: 6,
-            borderWidth: 1,
-            borderColor: "#2a303b",
-            borderRadius: 12,
-            backgroundColor: "#11151b",
-            overflow: "hidden",
-          }}
-        >
-          {options.map((option) => (
-            <Pressable
-              key={option}
-              onPress={() => {
-                onChange(option);
-                setOpen(false);
-              }}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-                borderBottomWidth: 1,
-                borderBottomColor: "#222831",
-              }}
-            >
-              <Text
-                style={{
-                  color: value === option ? "#ff6a00" : "#f5f7fb",
-                  fontSize: 14,
-                  fontWeight: value === option ? "700" : "500",
-                }}
-              >
-                {option}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
       <FieldErrorText errors={errors} />
     </View>
   );
@@ -3116,11 +3029,6 @@ function validateStep(
         if (answers["declaration.customer_unavailable_to_sign"] === "Yes")
           return true;
         return Boolean(answer);
-      }
-      if (field.key === "customer_unavailable_reason") {
-        if (answers["declaration.customer_unavailable_to_sign"] === "Yes")
-          return Boolean(answer);
-        return true;
       }
       if (field.key === "customer_landlord_name") {
         if (

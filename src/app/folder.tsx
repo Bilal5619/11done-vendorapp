@@ -1,13 +1,12 @@
-import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { getBookingCertificates, getCertificates } from '@/api/certificatesApi';
 import { normalizeApiError } from '@/api';
-import { Card, EmptyState, ErrorState, ProtectedScreen, SectionIntro, ui } from '@/components/vendor-ui';
+import { Card, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, SectionIntro, ui } from '@/components/vendor-ui';
 import type { CertificateSummary } from '@/types/vendor';
 import { getCertificateDate, getCertificateService, getCertificateTitle } from '@/types/vendor';
 
@@ -49,17 +48,25 @@ export default function FolderScreen() {
     ].filter(Boolean).some((value) => String(value).toLowerCase().includes(normalized)));
   }, [certificates, query]);
 
+  async function openPdfUrl(url: string) {
+    await openExternalUrl(url, 'This device could not open it directly. Try again in a moment.');
+  }
+
   async function handleShare(certificate: CertificateSummary) {
     const url = certificate.pdf_url ?? certificate.url;
     if (!url) {
       setError('This certificate does not have a PDF URL yet.');
       return;
     }
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(String(url));
-      return;
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(String(url));
+        return;
+      }
+      await openPdfUrl(String(url));
+    } catch {
+      Alert.alert('Could not share the PDF', 'Please try again in a moment.');
     }
-    await Linking.openURL(String(url));
   }
 
   function handleAttach(certificate: CertificateSummary) {
@@ -96,7 +103,7 @@ export default function FolderScreen() {
             <View style={ui.wrapRow}>
               {certificate.pdf_url || certificate.url ? (
                 <>
-                  <Pressable onPress={() => Linking.openURL(String(certificate.pdf_url ?? certificate.url))} style={ui.secondaryButton}>
+                  <Pressable onPress={() => openPdfUrl(String(certificate.pdf_url ?? certificate.url))} style={ui.secondaryButton}>
                     <Text style={ui.secondaryButtonText}>View PDF</Text>
                   </Pressable>
                   <Pressable onPress={() => handleShare(certificate)} style={ui.secondaryButton}>

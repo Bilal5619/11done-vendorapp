@@ -1,6 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import * as Linking from "expo-linking";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
@@ -32,6 +31,7 @@ import {
   EmptyState,
   ErrorState,
   fontFamily,
+  openExternalUrl,
   ProtectedScreen,
   StatusPill,
   ui,
@@ -340,14 +340,16 @@ export default function JobDetailScreen() {
                 <QuickAction
                   icon="directions"
                   label="Directions"
-                  onPress={() => Linking.openURL(mapUrl)}
+                  onPress={() => openExternalUrl(mapUrl, "Could not open Maps.")}
                 />
               ) : null}
               {getJobSitePhone(job) ? (
                 <QuickAction
                   icon="phone"
                   label="Call site"
-                  onPress={() => Linking.openURL(`tel:${getJobSitePhone(job)}`)}
+                  onPress={() =>
+                    openExternalUrl(`tel:${getJobSitePhone(job)}`, "Could not start the call.")
+                  }
                 />
               ) : null}
             </View>
@@ -478,7 +480,9 @@ export default function JobDetailScreen() {
               <View style={ui.wrapRow}>
                 {getJobInvoiceUrl(job) ? (
                   <Pressable
-                    onPress={() => Linking.openURL(getJobInvoiceUrl(job))}
+                    onPress={() =>
+                      openExternalUrl(getJobInvoiceUrl(job), "Could not open the invoice.")
+                    }
                     style={ui.secondaryButton}
                   >
                     <Text style={ui.secondaryButtonText}>View invoice</Text>
