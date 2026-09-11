@@ -40,6 +40,10 @@ export const fontFamily = Platform.select({
 export const appRoutes = [
   { label: "Home", route: "/dashboard", icon: "home" },
   { label: "Jobs", route: "/jobs", icon: "work" },
+  // Leads sit next to Jobs because that is how a vendor thinks about them —
+  // work to pick up — even though they are paid for rather than assigned.
+  { label: "Leads", route: "/leads", icon: "campaign" },
+  { label: "My jobs", route: "/my-jobs", icon: "assignment" },
   { label: "Invoices", route: "/invoices", icon: "receipt_long" },
   { label: "Certificate", route: "/certificates", icon: "description" },
   { label: "Folder", route: "/folder", icon: "folder" },
@@ -47,7 +51,28 @@ export const appRoutes = [
   { label: "Profile", route: "/profile", icon: "person" },
 ] as const;
 
-export type AppRoute = (typeof appRoutes)[number]["route"] | "/notifications";
+export type AppRoute =
+  | (typeof appRoutes)[number]["route"]
+  | "/notifications"
+  | "/new-invoice"
+  | "/invoice-settings";
+
+/**
+ * Real device bottom clearance (the Android navigation bar, on both 3-button
+ * and gesture navigation, and the iOS home indicator), plus a fixed design
+ * margin on top of it.
+ *
+ * ProtectedScreen already applies insets.bottom to its own scrollable
+ * content. Anything that sits against the bottom edge outside that — a
+ * Modal, a bottom sheet, a fixed footer of buttons — needs the same real
+ * value rather than a guessed pixel number, or it ends up sitting behind the
+ * system bar on some devices and fine on others. Use this instead of writing
+ * a new paddingBottom guess in each screen.
+ */
+export function useBottomSafeArea(extraSpacing: number = 16): number {
+  const insets = useSafeAreaInsets();
+  return insets.bottom + extraSpacing;
+}
 
 export function ProtectedScreen({
   title,
@@ -236,6 +261,8 @@ function DrawerMenu({
   }[] = [
     { label: "Home", route: "/dashboard", icon: "home", key: "home" },
     { label: "Jobs / Appointments", route: "/jobs", icon: "work", key: "jobs" },
+    { label: "Leads", route: "/leads", icon: "campaign", key: "leads" },
+    { label: "My jobs", route: "/my-jobs", icon: "assignment", key: "my-jobs" },
     {
       label: "invoices",
       route: "/invoices",
@@ -561,6 +588,14 @@ export const ui: Record<string, any> = StyleSheet.create({
     fontWeight: "900",
   },
   subtitle: { fontFamily, color: "#b0bacd", fontSize: 14, lineHeight: 20 },
+  infoBox: {
+    backgroundColor: "#161b26",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#232a38",
+    padding: 12,
+    gap: 3,
+  },
   card: {
     backgroundColor: "#111827",
     borderRadius: 16,

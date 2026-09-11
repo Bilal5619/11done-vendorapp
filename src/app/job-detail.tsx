@@ -460,8 +460,20 @@ export default function JobDetailScreen() {
             <Card>
               <Text style={ui.cardTitle}>Invoice</Text>
               <Detail label="Invoice No" value={getJobInvoiceNumber(job)} />
-              <Detail label="Invoice Status" value={getJobInvoiceStatus(job)} />
-              <Detail label="Payment" value={getJobInvoicePaymentStatus(job)} />
+              {/* "submitted" used to mean pending review before anything went
+                  out. Now the invoice has already reached the customer the
+                  moment this appears, so it's relabelled here to say what's
+                  actually still outstanding — your payout, not the invoice
+                  itself. */}
+              <Detail
+                label="Invoice"
+                value={
+                  getJobInvoiceStatus(job) === "submitted"
+                    ? "Sent to customer — payout pending"
+                    : getJobInvoiceStatus(job)
+                }
+              />
+              <Detail label="Your Payout" value={getJobInvoicePaymentStatus(job)} />
               <Detail label="Paid Date" value={getJobInvoicePaidDate(job)} />
               <View style={ui.wrapRow}>
                 {getJobInvoiceUrl(job) ? (
@@ -477,7 +489,11 @@ export default function JobDetailScreen() {
                     onPress={() => setIsInvoiceFormOpen(true)}
                     style={ui.primaryButton}
                   >
-                    <Text style={ui.primaryButtonText}>Create invoice</Text>
+                    {/* This opens the review screen, not a draft — sending
+                        from there goes straight to the customer, so the label
+                        says that upfront rather than implying another step
+                        comes after. */}
+                    <Text style={ui.primaryButtonText}>Invoice customer</Text>
                   </Pressable>
                 ) : null}
               </View>

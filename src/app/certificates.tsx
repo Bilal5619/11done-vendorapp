@@ -55,6 +55,7 @@ import {
   ProtectedScreen,
   StatusPill,
   ui,
+  useBottomSafeArea,
 } from "@/components/vendor-ui";
 import {
   electricalCertificates,
@@ -140,6 +141,13 @@ export default function CertificatesScreen() {
     VendorRegistrationNumber[]
   >([]);
   const [isInvoicePromptOpen, setIsInvoicePromptOpen] = useState(false);
+  // Which half of the picker is showing. Opening from a job used to list every
+  // saved and draft report first, pushing the certificate names right to the
+  // bottom — so starting a new one meant scrolling past work already done.
+  // "new" is the default because that is what the button says it does; saved
+  // work is one tap away and carries a count so it is not missed.
+  const [pickerTab, setPickerTab] = useState<"new" | "saved">("new");
+  const showSavedList = pickerTab === "saved" && certificates.length > 0;
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   const load = useCallback(async () => {
@@ -687,11 +695,33 @@ setNotice("Standalone certificate draft created.");
         buildAppointmentInvoicePayload(job),
       );
       setIsInvoicePromptOpen(false);
-      setNotice("Certificate completed and invoice created.");
+      setNotice("Invoice sent to the customer.");
     } catch (invoiceError) {
-      setError(
-        formatApiError(invoiceError, "The invoice could not be created."),
+      const message = formatApiError(
+        invoiceError,
+        "The invoice could not be sent.",
       );
+      // The server refuses to send an invoice under a business profile that
+      // is not filled in — it's the one place this is actually enforced, so
+      // rather than duplicate that check here, this just recognises the
+      // message it sends back and offers the fix directly instead of leaving
+      // the vendor with a dead end.
+      if (message.toLowerCase().includes("business profile")) {
+        setIsInvoicePromptOpen(false);
+        Alert.alert(
+          "Finish your business profile first",
+          "Your invoices go out under your own business name and details, so this needs to be filled in before one can be sent.",
+          [
+            { text: "Later", style: "cancel" },
+            {
+              text: "Complete profile",
+              onPress: () => router.push("/invoice-settings"),
+            },
+          ],
+        );
+        return;
+      }
+      setError(message);
     } finally {
       setIsCreatingInvoice(false);
     }
@@ -1177,7 +1207,44 @@ setNotice("Standalone certificate draft created.");
         </>
       ) : (
         <>
-          {bookingId && certificates.length ? (
+          {bookingId && certificates.length > 0 ? (
+            <View style={styles.pickerTabs}>
+              <Pressable
+                onPress={() => setPickerTab("new")}
+                style={[
+                  styles.pickerTab,
+                  pickerTab === "new" && styles.pickerTabActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.pickerTabText,
+                    pickerTab === "new" && styles.pickerTabTextActive,
+                  ]}
+                >
+                  New certificate
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setPickerTab("saved")}
+                style={[
+                  styles.pickerTab,
+                  pickerTab === "saved" && styles.pickerTabActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.pickerTabText,
+                    pickerTab === "saved" && styles.pickerTabTextActive,
+                  ]}
+                >
+                  Saved ({certificates.length})
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {bookingId && showSavedList ? (
             <Card>
               <Text style={ui.cardTitle}>Reports for this job</Text>
               {certificates.map((item) => {
@@ -1227,7 +1294,12 @@ setNotice("Standalone certificate draft created.");
               </Text>
             </Card>
           ) : null}
-          <View style={styles.certificateGrid}>
+          <View
+            style={[
+              styles.certificateGrid,
+              showSavedList ? styles.hidden : null,
+            ]}
+          >
             {certificateGroups.map((group, groupIndex) => {
               const accent =
                 categoryAccents[group.title] ?? defaultCategoryAccent;
@@ -1345,9 +1417,11 @@ function InvoicePrompt({
     >
       <View style={styles.invoiceBackdrop}>
         <View style={styles.invoiceDialog}>
-          <Text style={ui.cardTitle}>Generate invoice?</Text>
+          <Text style={ui.cardTitle}>Send invoice to customer?</Text>
           <Text style={ui.muted}>
-            The certificate is done. Create the invoice for this job now.
+            The certificate is done. This sends the final invoice straight to
+            the customer under your own business details — there&apos;s no
+            review step after this.
           </Text>
 
           <View style={styles.invoiceRows}>
@@ -1367,7 +1441,7 @@ function InvoicePrompt({
               onPress={onClose}
             />
             <ActionButton
-              label={isSaving ? "Generating..." : "Generate"}
+              label={isSaving ? "Sending..." : "Send now"}
               disabled={isSaving}
               onPress={onGenerate}
             />
@@ -1876,6 +1950,9 @@ function ScheduleTable({
   const [isRowSaving, setIsRowSaving] = useState(false);
   const [draft, setDraft] = useState<AnswerMap>({});
   const fields = step.table?.fields ?? [];
+  // This sheet is anchored to the bottom of the screen — its Cancel/Save Row
+  // buttons need the real device inset, not a fixed guess.
+  const bottomSafeArea = useBottomSafeArea(14);
   function open(index: number | null) {
     setEditingIndex(index);
     setDraft(index === null ? {} : { ...rows[index] });
@@ -2148,7 +2225,7 @@ function ScheduleTable({
                 );
               })}
             </ScrollView>
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { paddingBottom: bottomSafeArea }]}>
               <ActionButton
                 label="Cancel"
                 secondary
@@ -2422,7 +2499,12 @@ const normalizedY = Math.max(
         onRequestClose={requestCloseSignatureModal}
       >
         <View
-          style={[styles.signatureModalContainer, { paddingTop: insets.top }]}
+          style={[
+            styles.signatureModalContainer,
+            // Was a fixed paddingBottom: 20 — the Save/Clear buttons below
+            // sat under the Android nav bar on gesture and 3-button nav.
+            { paddingTop: insets.top, paddingBottom: insets.bottom + 20 },
+          ]}
         >
           <View style={styles.signatureModalHeader}>
             <Text style={styles.signatureModalTitle}>
@@ -3291,6 +3373,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   certificateGrid: { gap: 14 },
+  hidden: { display: "none" },
+  pickerTabs: { flexDirection: "row", gap: 8 },
+  pickerTab: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#232a38",
+    backgroundColor: "#161b26",
+    alignItems: "center",
+  },
+  pickerTabActive: { backgroundColor: "#ff6a00", borderColor: "#ff6a00" },
+  pickerTabText: { color: "#d9dee8", fontSize: 13.5, fontWeight: "700" },
+  pickerTabTextActive: { color: "#ffffff" },
   categorySection: { gap: 8 },
   categoryTitle: {
     color: "#79b9ff",
@@ -3494,7 +3590,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    // top/bottom padding is applied inline where this is rendered, using the
+    // real device inset rather than a fixed guess here.
   },
   signatureModalHeader: {
     flexDirection: "row",

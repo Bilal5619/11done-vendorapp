@@ -207,6 +207,17 @@ export default function ProfileScreen() {
       {error ? <ErrorState message={error} onRetry={loadProfile} /> : null}
       {success ? <Card><Text style={[ui.value, { color: '#17c7a3' }]}>{success}</Text></Card> : null}
 
+      {/* One saved business profile, used on every invoice — for private jobs
+          and for 11Done jobs alike, so it only has to be filled in once. */}
+      <Pressable onPress={() => router.push('/invoice-settings')} style={({ pressed }) => [pressed && ui.pressed]}>
+        <Card>
+          <Text style={ui.cardTitle}>Business & invoice details</Text>
+          <Text style={ui.muted}>
+            Your trading name, address, VAT status and bank details — used on every invoice you send.
+          </Text>
+        </Card>
+      </Pressable>
+
       <Card style={focusSection === 'logo' ? styles.focusCard : undefined}>
         <View onLayout={(event: LayoutChangeEvent) => { sectionPositions.current.logo = event.nativeEvent.layout.y; }}>
           <Text style={ui.cardTitle}>Company logo</Text>

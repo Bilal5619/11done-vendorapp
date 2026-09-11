@@ -100,13 +100,16 @@ function InvoiceJobCard({ job, onChanged }: { job: JobSummary; onChanged: () => 
         {invoiceNumber ? <Text style={ui.muted}>Invoice No: {invoiceNumber}</Text> : null}
         {invoiceStatus ? (
           <View style={ui.row}>
-            <Text style={ui.muted}>Invoice Status:</Text>
-            <StatusPill status={invoiceStatus} />
+            {/* "submitted" now means the invoice already reached the customer
+                — it's not waiting on a review. Relabelled so this doesn't
+                read as still pending on our end. */}
+            <Text style={ui.muted}>Invoice:</Text>
+            <StatusPill status={invoiceStatus === 'submitted' ? 'Sent to customer' : invoiceStatus} />
           </View>
         ) : null}
         {invoicePaymentStatus ? (
           <View style={ui.row}>
-            <Text style={ui.muted}>Payment:</Text>
+            <Text style={ui.muted}>Your Payout:</Text>
             <StatusPill status={invoicePaymentStatus} />
           </View>
         ) : null}
@@ -119,7 +122,7 @@ function InvoiceJobCard({ job, onChanged }: { job: JobSummary; onChanged: () => 
           ) : null}
           {!hasJobInvoice(job) ? (
             <Pressable onPress={() => setIsFormOpen(true)} style={ui.primaryButton}>
-              <Text style={ui.primaryButtonText}>Create invoice</Text>
+              <Text style={ui.primaryButtonText}>Invoice customer</Text>
             </Pressable>
           ) : null}
         </View>

@@ -88,8 +88,11 @@ const clientEngineer: ElectricalStep = {
     f("site_contact_email", "Site contact email"),
     f("service_title", "Service title"),
     f("job_reference", "Job reference / booking ID"),
+    // Optional. The customer is often not on site when the engineer finishes,
+    // and making this compulsory left the engineer unable to submit completed
+    // work. The engineer's own signature is still required — that is the one
+    // carrying the professional declaration.
     f("client_signature", "Client / occupier signature", "signature", {
-      required: true,
       signatureType: "customer",
     }),
     f("engineer_name", "Engineer name", "text", { required: true }),
