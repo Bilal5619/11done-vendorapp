@@ -12,14 +12,17 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "co.uk.elevendone.vendor",
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "output": "static",
@@ -55,10 +58,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "ec3648ef-4c22-4d09-84cc-e4a1e3e13315"
+        "projectId": "227cac48-684e-4b55-b5ad-dc4e221e8e0d"
       }
     },
-    "owner": "sourav3738s-team"
+    "owner": "rohitverma37380s-team"
   }
 }
-
