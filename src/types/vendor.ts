@@ -244,6 +244,11 @@ export type InvoiceSummary = {
   amount?: string | number | null;
   total_amount?: string | number | null;
   customer_paid_amount?: string | number | null;
+  commission_percentage?: string | number | null;
+  commission_amount?: string | number | null;
+  vendor_payout_amount?: string | number | null;
+  vat_rate?: string | number | null;
+  vat_on_commission?: string | number | null;
 };
 
 export type VendorDocument = {
@@ -625,7 +630,10 @@ export function getJobDateTime(job: JobSummary) {
       )
     : "";
 
-  return [date, time || range].filter(Boolean).join(" ") || dateTime;
+  return (
+    [formatUkDate(date), time || range].filter(Boolean).join(" ") ||
+    formatUkDate(dateTime)
+  );
 }
 
 export function getJobBookingDate(job: JobSummary) {
@@ -756,6 +764,27 @@ export function getJobInvoiceStatus(job: JobSummary) {
   );
 }
 
+// The four figures behind "what do I actually get paid on this job": what
+// 11Done took as commission, what's left for the vendor, and — only ever
+// informational, never a deduction — what a VAT-registered vendor would owe
+// VAT on for that commission. All four come straight off the invoice row
+// 11Done already calculated; nothing is recomputed on device.
+export function getJobCommissionPercentage(job: JobSummary) {
+  return firstString(getJobInvoice(job)?.commission_percentage);
+}
+
+export function getJobCommissionAmount(job: JobSummary) {
+  return firstString(getJobInvoice(job)?.commission_amount);
+}
+
+export function getJobVendorPayoutAmount(job: JobSummary) {
+  return firstString(getJobInvoice(job)?.vendor_payout_amount);
+}
+
+export function getJobVatOnCommission(job: JobSummary) {
+  return firstString(getJobInvoice(job)?.vat_on_commission);
+}
+
 export function getJobInvoicePaymentStatus(job: JobSummary) {
   const invoice = getJobInvoice(job);
   return firstString(
@@ -783,11 +812,17 @@ export function getJobInvoicePaidDate(job: JobSummary) {
   return formatUkDate(value);
 }
 
-function formatUkDate(value: string) {
+// Every date shown to a vendor should read DD-MM-YYYY, not the raw
+// YYYY-MM-DD the API returns — this is the one place that conversion
+// happens, so every display-only date getter routes through it. Exported so
+// screens working with a date string that isn't wrapped in one of the
+// getters above (e.g. a plain job/invoice record from a different API) can
+// still format it the same way for display.
+export function formatUkDate(value: string) {
   if (!value) return "";
 
   const isoDate = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+  if (isoDate) return `${isoDate[3]}-${isoDate[2]}-${isoDate[1]}`;
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -797,7 +832,9 @@ function formatUkDate(value: string) {
     month: "2-digit",
     year: "numeric",
     timeZone: "UTC",
-  }).format(parsed);
+  })
+    .format(parsed)
+    .replace(/\//g, "-");
 }
 
 export function getJobInvoiceUrl(job: JobSummary) {

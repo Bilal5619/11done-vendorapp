@@ -1,10 +1,19 @@
+import * as WebBrowser from 'expo-web-browser';
 import { SymbolView } from 'expo-symbols';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { getAvailableLeads, getPurchasedLeads, requestLeadRefund, unlockLead, type Lead } from '@/api/leadsApi';
+import {
+  getAvailableLeads,
+  getPurchasedLeads,
+  getWalletTopUpCheckoutUrl,
+  requestLeadRefund,
+  unlockLead,
+  MINIMUM_WALLET_TOPUP,
+  type Lead,
+} from '@/api/leadsApi';
 import { normalizeApiError } from '@/api';
 import { EmptyState, ErrorState, openExternalUrl, ProtectedScreen, ui } from '@/components/vendor-ui';
 
@@ -19,6 +28,7 @@ export default function LeadsScreen() {
   const [needsCoverage, setNeedsCoverage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -59,17 +69,27 @@ export default function LeadsScreen() {
             <Text style={styles.balanceLabel}>Your balance</Text>
             <Text style={styles.balanceValue}>£{balance.toFixed(2)}</Text>
           </View>
-          {freeAccess ? (
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeBadgeText}>Free leads</Text>
-            </View>
-          ) : freeCredits > 0 ? (
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeBadgeText}>{freeCredits} free left</Text>
-            </View>
-          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {freeAccess ? (
+              <View style={styles.freeBadge}>
+                <Text style={styles.freeBadgeText}>Free leads</Text>
+              </View>
+            ) : freeCredits > 0 ? (
+              <View style={styles.freeBadge}>
+                <Text style={styles.freeBadgeText}>{freeCredits} free left</Text>
+              </View>
+            ) : null}
+            <Pressable
+              onPress={() => setIsTopUpOpen(true)}
+              style={({ pressed }) => [styles.topUpButton, pressed && ui.pressed]}
+            >
+              <Text style={styles.topUpButtonText}>Top up</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
+
+      <TopUpModal visible={isTopUpOpen} onClose={() => setIsTopUpOpen(false)} onToppedUp={load} />
 
       <View style={styles.tabRow}>
         {([
@@ -100,7 +120,13 @@ export default function LeadsScreen() {
         />
       ) : leads.length ? (
         leads.map((lead) => (
-          <LeadCard key={String(lead.id)} lead={lead} balance={balance} onChanged={load} />
+          <LeadCard
+            key={String(lead.id)}
+            lead={lead}
+            balance={balance}
+            onChanged={load}
+            onRequestTopUp={() => setIsTopUpOpen(true)}
+          />
         ))
       ) : (
         <EmptyState
@@ -116,7 +142,17 @@ export default function LeadsScreen() {
   );
 }
 
-function LeadCard({ lead, balance, onChanged }: { lead: Lead; balance: number; onChanged: () => void }) {
+function LeadCard({
+  lead,
+  balance,
+  onChanged,
+  onRequestTopUp,
+}: {
+  lead: Lead;
+  balance: number;
+  onChanged: () => void;
+  onRequestTopUp: () => void;
+}) {
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [refundOpen, setRefundOpen] = useState(false);
@@ -232,9 +268,9 @@ function LeadCard({ lead, balance, onChanged }: { lead: Lead; balance: number; o
           {actionError ? <Text style={[ui.muted, { color: '#ff8585' }]}>{actionError}</Text> : null}
 
           <Pressable
-            disabled={isSaving || !canAfford}
-            onPress={handleUnlock}
-            style={[ui.primaryButton, (isSaving || !canAfford) && { opacity: 0.5 }]}
+            disabled={isSaving}
+            onPress={canAfford ? handleUnlock : onRequestTopUp}
+            style={[ui.primaryButton, isSaving && { opacity: 0.5 }]}
           >
             <Text style={ui.primaryButtonText}>
               {isSaving
@@ -265,6 +301,81 @@ function LeadCard({ lead, balance, onChanged }: { lead: Lead; balance: number; o
         }}
       />
     </View>
+  );
+}
+
+function TopUpModal({
+  visible,
+  onClose,
+  onToppedUp,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onToppedUp: () => void;
+}) {
+  const [amount, setAmount] = useState(String(MINIMUM_WALLET_TOPUP));
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    const value = Number(amount.replace(',', '.'));
+    if (!Number.isFinite(value) || value < MINIMUM_WALLET_TOPUP) {
+      setError(`The minimum top-up is £${MINIMUM_WALLET_TOPUP.toFixed(2)}.`);
+      return;
+    }
+
+    setError('');
+    setIsSaving(true);
+    try {
+      const { checkout_url } = await getWalletTopUpCheckoutUrl(value);
+      // The page itself redirects here on success or failure — either way
+      // the app doesn't need to read the result off the URL, since the
+      // balance was only ever credited server-side once Stripe confirmed
+      // the payment. Closing and reloading picks up whatever actually
+      // happened.
+      await WebBrowser.openAuthSessionAsync(checkout_url, 'donevendorapp://wallet-topup');
+      onClose();
+      await onToppedUp();
+    } catch (submitError) {
+      setError(normalizeApiError(submitError, 'Could not start the top-up.').message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>Top up your balance</Text>
+          <Text style={ui.muted}>
+            This adds to your current balance — it doesn&apos;t replace it. Minimum £
+            {MINIMUM_WALLET_TOPUP.toFixed(2)}.
+          </Text>
+          <TextInput
+            value={amount}
+            onChangeText={setAmount}
+            placeholder={`${MINIMUM_WALLET_TOPUP}`}
+            placeholderTextColor="#6b7484"
+            keyboardType="decimal-pad"
+            style={[styles.modalInput, { minHeight: 48, textAlignVertical: 'center' }]}
+          />
+          {error ? <Text style={[ui.muted, { color: '#ff8585' }]}>{error}</Text> : null}
+          <View style={styles.modalActions}>
+            <Pressable onPress={onClose} style={styles.modalCancel}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              disabled={isSaving}
+              onPress={submit}
+              style={[ui.primaryButton, { flex: 1 }, isSaving && { opacity: 0.5 }]}
+            >
+              <Text style={ui.primaryButtonText}>{isSaving ? 'Opening...' : 'Continue to card payment'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -362,6 +473,8 @@ const styles = StyleSheet.create({
   balanceValue: { color: '#ffffff', fontSize: 24, fontWeight: '800', marginTop: 2 },
   freeBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: '#1d3a2c' },
   freeBadgeText: { color: '#4ade80', fontSize: 12, fontWeight: '700' },
+  topUpButton: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, backgroundColor: '#ff6a00' },
+  topUpButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
 
   tabRow: { flexDirection: 'row', gap: 8 },
   tabChip: {

@@ -199,14 +199,14 @@ export default function NewInvoiceScreen() {
 
   if (isLoading) {
     return (
-      <ProtectedScreen title="New invoice" activeRoute="/invoices">
+      <ProtectedScreen title="My Own Invoice" activeRoute="/new-invoice">
         <View style={ui.stateCard}><ActivityIndicator color="#ff6a00" /></View>
       </ProtectedScreen>
     );
   }
 
   return (
-    <ProtectedScreen title="New invoice" activeRoute="/invoices">
+    <ProtectedScreen title="My Own Invoice" activeRoute="/new-invoice">
       <StatusBar style="light" />
 
       {!settingsComplete ? (

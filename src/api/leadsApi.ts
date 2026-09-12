@@ -81,3 +81,22 @@ export async function requestLeadRefund(id: string | number, reason: string) {
     await api.post(`/leads/${id}/refund-request`, { reason })
   );
 }
+
+// The £10 minimum the server enforces, mirrored here only so the amount
+// field can validate before a round trip — the server is what actually
+// decides and never trusts this.
+export const MINIMUM_WALLET_TOPUP = 10;
+
+/**
+ * A link to a hosted card-payment page for topping up the balance leads are
+ * unlocked from. It always adds to whatever balance is already there — a
+ * vendor short by £5 on a £10 lead still tops up the full amount they enter,
+ * not just the shortfall. Card details never pass through this app; the
+ * link is opened in the system browser and the balance is only credited
+ * once the server has verified the payment directly with Stripe.
+ */
+export async function getWalletTopUpCheckoutUrl(amount: number) {
+  return unwrapData<{ checkout_url: string; minimum_topup: number }>(
+    await api.post('/wallet/topup-checkout', { amount })
+  );
+}

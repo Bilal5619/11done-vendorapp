@@ -47,6 +47,7 @@ import {
   buildAppointmentInvoicePayload,
   createAppointmentInvoice,
   getJob,
+  getJobs,
 } from "@/api/jobsApi";
 import {
   Card,
@@ -69,15 +70,18 @@ import { useAuth } from "@/context/AuthContext";
 import type {
   AccreditationBody,
   JobDetail,
+  JobSummary,
   Vendor,
   VendorRegistrationNumber,
 } from "@/types/vendor";
 import {
   accreditationLabels,
   findAccreditationNumber,
+  formatUkDate,
   getJobAppointmentDate,
   getJobBookingId,
   getJobCustomerName,
+  getJobDateTime,
   getJobEmail,
   getJobNotes,
   getJobPhone,
@@ -149,6 +153,14 @@ export default function CertificatesScreen() {
   const [pickerTab, setPickerTab] = useState<"new" | "saved">("new");
   const showSavedList = pickerTab === "saved" && certificates.length > 0;
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  // Attaching a certificate that was created on its own (not opened from a
+  // job) used to mean saving it, leaving this screen, opening Folder, finding
+  // the job there and using "Use for completion" — this picker does the same
+  // attach in one step, right where the PDF was just generated.
+  const [isJobPickerOpen, setIsJobPickerOpen] = useState(false);
+  const [attachableJobs, setAttachableJobs] = useState<JobSummary[]>([]);
+  const [isLoadingAttachableJobs, setIsLoadingAttachableJobs] = useState(false);
+  const [attachJobsError, setAttachJobsError] = useState("");
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -692,6 +704,35 @@ setNotice("Standalone certificate draft created.");
     });
   }
 
+  async function openJobPicker() {
+    setIsJobPickerOpen(true);
+    setAttachJobsError("");
+    setIsLoadingAttachableJobs(true);
+    try {
+      const jobs = await getJobs("accepted");
+      setAttachableJobs(jobs);
+    } catch (jobsError) {
+      setAttachJobsError(
+        formatApiError(jobsError, "Could not load your jobs."),
+      );
+    } finally {
+      setIsLoadingAttachableJobs(false);
+    }
+  }
+
+  function attachToJob(targetJob: JobSummary) {
+    setIsJobPickerOpen(false);
+    if (!certificate || !definition) return;
+    router.replace({
+      pathname: "/job-detail",
+      params: {
+        id: String(targetJob.id),
+        certificate_id: String(certificate.id),
+        certificate_title: definition.title,
+      },
+    });
+  }
+
   async function generateInvoice() {
     if (!job) return;
     setIsCreatingInvoice(true);
@@ -1196,10 +1237,74 @@ setNotice("Standalone certificate draft created.");
                       })
                     }
                   />
-                ) : null}
+                ) : (
+                  <ActionButton
+                    label="Attach to a job"
+                    onPress={openJobPicker}
+                  />
+                )}
               </View>
             </Card>
           ) : null}
+          <Modal
+            visible={isJobPickerOpen}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setIsJobPickerOpen(false)}
+          >
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalTitle}>Attach to a job</Text>
+                    <Text style={ui.muted}>
+                      Choose which accepted job this certificate is for.
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setIsJobPickerOpen(false)}
+                    style={styles.iconButton}
+                  >
+                    <SymbolView
+                      name={{ ios: "xmark", android: "close", web: "close" }}
+                      size={21}
+                      tintColor="#f8fafc"
+                    />
+                  </Pressable>
+                </View>
+                <ScrollView contentContainerStyle={styles.modalContent}>
+                  {isLoadingAttachableJobs ? (
+                    <ActivityIndicator color="#ff6a00" />
+                  ) : attachJobsError ? (
+                    <Text style={[ui.muted, { color: "#ff8585" }]}>
+                      {attachJobsError}
+                    </Text>
+                  ) : attachableJobs.length ? (
+                    attachableJobs.map((attachableJob) => (
+                      <Pressable
+                        key={String(attachableJob.id)}
+                        onPress={() => attachToJob(attachableJob)}
+                        style={styles.attachJobRow}
+                      >
+                        <Text style={ui.value}>
+                          {getJobServiceName(attachableJob) || "Job"}
+                        </Text>
+                        <Text style={ui.muted}>
+                          {getJobCustomerName(attachableJob) || "Customer pending"}
+                          {" · "}
+                          {getJobDateTime(attachableJob) || "Date pending"}
+                        </Text>
+                      </Pressable>
+                    ))
+                  ) : (
+                    <Text style={ui.muted}>
+                      No accepted jobs waiting on a certificate right now.
+                    </Text>
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
           <ActionButton
             label="Back to certificates"
             secondary
@@ -1617,7 +1722,7 @@ function QuestionField({
               style={[ui.input, styles.dateButton]}
             >
               <Text style={value ? ui.value : ui.muted}>
-                {value || "Select date"}
+                {value ? formatUkDate(value) : "Select date"}
               </Text>
               <SymbolView
                 name={{
@@ -2049,7 +2154,21 @@ function ScheduleTable({
                         options:
                           dynamicSelectOptions[field.key] ?? field.options,
                       }
-                    : field;
+                    : field.key === "operating_pressure_or_heat_input_value"
+                      ? {
+                          ...field,
+                          // The unit shown next to the value depends on which
+                          // of the two the engineer picked above it.
+                          unit:
+                            draft["operating_pressure_or_heat_input"] ===
+                            "Heat Input"
+                              ? "Kw"
+                              : draft["operating_pressure_or_heat_input"] ===
+                                  "Operating Pressure"
+                                ? "Mb"
+                                : field.unit,
+                        }
+                      : field;
 
                 const isApplianceLocation =
                   step.key === "appliance_details" &&
@@ -3396,6 +3515,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  attachJobRow: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#2a303b",
+    backgroundColor: "#11151b",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+    gap: 3,
   },
   choiceActive: { borderColor: "#58a6ff", backgroundColor: "#173352" },
   choiceText: { color: "#d9dee8", fontSize: 13, fontWeight: "700" },

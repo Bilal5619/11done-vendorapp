@@ -8,7 +8,7 @@ import { getInvoiceSettings, type InvoiceSettings } from '@/api/myWorkApi';
 import { normalizeApiError } from '@/api';
 import type { FieldErrors } from '@/api/client';
 import { Card, ui } from '@/components/vendor-ui';
-import type { JobSummary } from '@/types/vendor';
+import { formatUkDate, type JobSummary } from '@/types/vendor';
 
 type InvoiceFormProps = {
   job: JobSummary;
@@ -156,7 +156,7 @@ export function InvoiceForm({ job, onCreated, onCancel }: InvoiceFormProps) {
 
       <ReadonlyField label="Booking / Job ID" value={autoPayload.booking_id} />
       <ReadonlyField label="Service Title" value={autoPayload.service_title} />
-      <ReadonlyField label="Invoice Date" value={autoPayload.invoice_date} />
+      <ReadonlyField label="Invoice Date" value={formatUkDate(String(autoPayload.invoice_date ?? ''))} />
       <ReadonlyField label="Customer Paid Amount" value={autoPayload.customer_paid_amount} />
       <Text style={ui.muted}>
         This is the price the customer already paid at checkout — it is already inclusive of VAT if
