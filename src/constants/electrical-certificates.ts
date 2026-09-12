@@ -241,7 +241,7 @@ const gasApplianceDetailsFields: ElectricalField[] = [
   f("make", "Make", "text", { required: false }),
   f("model", "Model", "text", { required: false }),
   f("flue_type", "Flue type", "select", {
-    options: ["Open flue", "Room sealed", "Flueless", "Balanced"],
+    options: ["Open flue", "Room sealed", "Flueless"],
     required: false,
   }),
   f("owned_by", "Landlord’s appliance", "select", {

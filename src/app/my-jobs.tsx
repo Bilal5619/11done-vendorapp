@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Tex
 import { createMyJob, deleteMyJob, getMyJobs, updateMyJob, type MyJob } from '@/api/myWorkApi';
 import { normalizeApiError } from '@/api';
 import { EmptyState, ErrorState, ProtectedScreen, ui, useBottomSafeArea } from '@/components/vendor-ui';
+import { formatUkDate } from '@/types/vendor';
 
 /**
  * The vendor's own job book — work they found themselves, not through 11Done.
@@ -115,7 +116,7 @@ function JobRow({ job, onEdit, onChanged }: { job: MyJob; onEdit: () => void; on
 
       <Text style={ui.value}>{job.customer_name}</Text>
       {job.customer_address ? <Text style={ui.muted}>{job.customer_address}</Text> : null}
-      {job.job_date ? <Text style={ui.muted}>{job.job_date}{job.job_time ? ` · ${job.job_time}` : ''}</Text> : null}
+      {job.job_date ? <Text style={ui.muted}>{formatUkDate(job.job_date)}{job.job_time ? ` · ${job.job_time}` : ''}</Text> : null}
       {typeof job.price === 'number' ? <Text style={ui.value}>£{job.price.toFixed(2)}</Text> : null}
 
       <View style={styles.actionRow}>

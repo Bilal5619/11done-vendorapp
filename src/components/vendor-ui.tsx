@@ -57,7 +57,8 @@ export type AppRoute =
   | (typeof appRoutes)[number]["route"]
   | "/notifications"
   | "/new-invoice"
-  | "/invoice-settings";
+  | "/invoice-settings"
+  | "/earnings";
 
 /**
  * Real device bottom clearance (the Android navigation bar, on both 3-button
@@ -288,11 +289,29 @@ function DrawerMenu({
     { label: "Jobs / Appointments", route: "/jobs", icon: "work", key: "jobs" },
     { label: "Leads", route: "/leads", icon: "campaign", key: "leads" },
     { label: "My jobs", route: "/my-jobs", icon: "assignment", key: "my-jobs" },
+    // Two separate invoicing systems, so two separate, clearly-named entries:
+    // one for jobs 11Done assigned (invoice goes to that customer, 11Done
+    // sees it for the payout), one for work the vendor found and is billing
+    // entirely on their own account. Previously only the first had a menu
+    // entry at all — the second (/new-invoice) was reachable only by opening
+    // a job in "My jobs" first, which is what made it look missing.
     {
-      label: "invoices",
+      label: "11Done Invoices",
       route: "/invoices",
       icon: "receipt_long",
       key: "invoices",
+    },
+    {
+      label: "My Own Invoices",
+      route: "/new-invoice",
+      icon: "receipt_long",
+      key: "new-invoice",
+    },
+    {
+      label: "Earnings",
+      route: "/earnings",
+      icon: "payments",
+      key: "earnings",
     },
     {
       label: "Certificates",
