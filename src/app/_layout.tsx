@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { AccountStatusProvider } from '@/context/AccountStatusContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { NotificationMonitorProvider } from '@/context/NotificationMonitorContext';
@@ -24,12 +25,14 @@ export default function RootLayout() {
             <AccountStatusProvider>
               <NotificationMonitorProvider>
                 <AnimatedSplashOverlay />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: Colors.dark.background },
-                  }}
-                />
+                <ErrorBoundary>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: Colors.dark.background },
+                    }}
+                  />
+                </ErrorBoundary>
               </NotificationMonitorProvider>
             </AccountStatusProvider>
           </AuthProvider>

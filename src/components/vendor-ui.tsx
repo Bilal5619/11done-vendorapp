@@ -58,7 +58,8 @@ export type AppRoute =
   | "/notifications"
   | "/new-invoice"
   | "/invoice-settings"
-  | "/earnings";
+  | "/earnings"
+  | "/my-invoice-folder";
 
 /**
  * Real device bottom clearance (the Android navigation bar, on both 3-button
@@ -306,6 +307,15 @@ function DrawerMenu({
       route: "/new-invoice",
       icon: "receipt_long",
       key: "new-invoice",
+    },
+    {
+      // The saved-invoices counterpart to "My Own Invoices", the same way
+      // Folder is to Certificate below — every invoice raised for the
+      // vendor's own work is kept here, not just the one just created.
+      label: "My Invoice Folder",
+      route: "/my-invoice-folder",
+      icon: "folder",
+      key: "my-invoice-folder",
     },
     {
       label: "Earnings",

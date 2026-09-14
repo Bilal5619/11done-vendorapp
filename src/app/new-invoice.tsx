@@ -188,7 +188,9 @@ export default function NewInvoiceScreen() {
     try {
       const result = await createMyInvoice(payload);
       Alert.alert('Invoice created', `${result.invoice.invoice_number} is ready to send.`, [
-        { text: 'OK', onPress: () => router.replace('/invoices') },
+        // This is the vendor's own invoice, kept in its own folder — it has
+        // nothing to do with the separate 11Done job invoices screen.
+        { text: 'OK', onPress: () => router.replace('/my-invoice-folder') },
       ]);
     } catch (saveError) {
       setError(normalizeApiError(saveError, 'The invoice could not be created.').message);
