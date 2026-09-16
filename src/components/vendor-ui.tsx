@@ -1,12 +1,7 @@
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import {
-  PropsWithChildren,
-  RefObject,
-  useEffect,
-  useState,
-} from "react";
+import { PropsWithChildren, RefObject, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,7 +16,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { useAccountStatus } from "@/context/AccountStatusContext";
 import { useAuth } from "@/context/AuthContext";
@@ -94,6 +92,7 @@ export async function openExternalUrl(
   failureMessage: string = "This device could not open that. Please try again in a moment.",
 ): Promise<void> {
   if (!url) return;
+
   try {
     await Linking.openURL(url);
   } catch {
@@ -143,7 +142,9 @@ export function ProtectedScreen({
 
   // Android draws edge to edge, so the last card would otherwise sit under the
   // back / home / recent apps bar. Clear it with the real bottom inset.
-  const bottomInset = { paddingBottom: ui.content.paddingBottom + insets.bottom };
+  const bottomInset = {
+    paddingBottom: ui.content.paddingBottom + insets.bottom,
+  };
 
   const content = scroll ? (
     <ScrollView
@@ -803,13 +804,13 @@ export const ui: Record<string, any> = StyleSheet.create({
   pressed: { opacity: 0.72 },
   /* Drawer styles */
   drawerContainer: {
-  position: "absolute",
-  left: 0,
-  top: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 9999,
-},
+    position: "absolute",
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  },
   drawerOverlay: {
     position: "absolute",
     left: 0,

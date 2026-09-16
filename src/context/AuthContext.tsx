@@ -1,10 +1,18 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { isAxiosError } from 'axios';
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isAxiosError } from "axios";
+import * as SecureStore from "expo-secure-store";
+import {
+  createContext,
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { setAuthToken } from '@/api';
-import { loginVendor, signupVendor } from '@/api/authApi';
-import type { Vendor } from '@/types/vendor';
+import { setAuthToken } from "@/api";
+import { loginVendor, logoutVendor, signupVendor } from "@/api/authApi";
+import type { Vendor } from "@/types/vendor";
 
 export type LoginPayload = {
   email: string;
@@ -37,13 +45,15 @@ type AuthContextValue = {
   vendor: Vendor | null;
   token: string | null;
   isRestoring: boolean;
-  login: (payload: LoginPayload) => Promise<{ message: string; vendor: Vendor }>;
+  login: (
+    payload: LoginPayload,
+  ) => Promise<{ message: string; vendor: Vendor }>;
   signup: (payload: SignupPayload) => Promise<{ message: string }>;
   logout: () => Promise<void>;
 };
 
-const TOKEN_KEY = 'vendor_token';
-const VENDOR_KEY = 'vendor_data';
+const TOKEN_KEY = "vendor_token";
+const VENDOR_KEY = "vendor_data";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -58,7 +68,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async function restoreSession() {
       try {
         const [storedToken, storedVendor] = await Promise.all([
-          AsyncStorage.getItem(TOKEN_KEY),
+          SecureStore.getItemAsync(TOKEN_KEY),
           AsyncStorage.getItem(VENDOR_KEY),
         ]);
 
@@ -96,13 +106,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
           if (!accessToken || !nextVendor) {
             throw {
-              message: 'Login response was missing vendor session data.',
+              message: "Login response was missing vendor session data.",
               errors: {},
             } satisfies AuthError;
           }
 
           await Promise.all([
-            AsyncStorage.setItem(TOKEN_KEY, accessToken),
+            SecureStore.setItemAsync(TOKEN_KEY, accessToken),
             AsyncStorage.setItem(VENDOR_KEY, JSON.stringify(nextVendor)),
           ]);
           setAuthToken(accessToken);
@@ -110,7 +120,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           setVendor(nextVendor);
 
           return {
-            message: 'Login successful.',
+            message: "Login successful.",
             vendor: nextVendor,
           };
         } catch (error) {
@@ -122,20 +132,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
           await signupVendor(payload);
 
           return {
-            message: 'Sign up successfully completed. Please login now.',
+            message: "Sign up successfully completed. Please login now.",
           };
         } catch (error) {
           throw normalizeAuthError(error);
         }
       },
       async logout() {
-        await Promise.all([AsyncStorage.removeItem(TOKEN_KEY), AsyncStorage.removeItem(VENDOR_KEY)]);
+        try {
+          await logoutVendor();
+        } catch {
+          // Even if the server cannot be reached,
+          // still remove the local session from this device.
+        }
+
+        await Promise.all([
+          SecureStore.deleteItemAsync(TOKEN_KEY),
+          AsyncStorage.removeItem(VENDOR_KEY),
+        ]);
+
         setAuthToken(null);
         setToken(null);
         setVendor(null);
       },
     }),
-    [isRestoring, token, vendor]
+    [isRestoring, token, vendor],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -145,7 +166,7 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error('useAuth must be used inside AuthProvider');
+    throw new Error("useAuth must be used inside AuthProvider");
   }
 
   return context;
@@ -155,7 +176,8 @@ function normalizeAuthError(error: unknown): AuthError {
   if (isAxiosError(error)) {
     const data = error.response?.data;
     return {
-      message: data?.message ?? 'Unable to connect to 11DONE. Please try again.',
+      message:
+        data?.message ?? "Unable to connect to 11DONE. Please try again.",
       errors: data?.errors ?? {},
     };
   }
@@ -165,18 +187,16 @@ function normalizeAuthError(error: unknown): AuthError {
   }
 
   return {
-    message: 'Something went wrong. Please try again.',
+    message: "Something went wrong. Please try again.",
     errors: {},
   };
 }
 
 function isAuthError(error: unknown): error is AuthError {
   return (
-    typeof error === 'object' &&
+    typeof error === "object" &&
     error !== null &&
-    'message' in error &&
-    typeof (error as AuthError).message === 'string'
+    "message" in error &&
+    typeof (error as AuthError).message === "string"
   );
 }
-
-

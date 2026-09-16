@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "11done-vendor-app",
+    "name": "11Done Vendor",
     "slug": "eleven-done-vendor-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -29,15 +29,13 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 110,
+          "resizeMode": "contain"
         }
       ],
       [
@@ -49,7 +47,8 @@
         }
       ],
       "expo-sharing",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -58,9 +57,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "227cac48-684e-4b55-b5ad-dc4e221e8e0d"
+        "projectId": "ec3648ef-4c22-4d09-84cc-e4a1e3e13315"
       }
     },
-    "owner": "rohitverma37380s-team"
+    "owner": "sourav3738s-team"
   }
 }
