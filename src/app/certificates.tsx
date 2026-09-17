@@ -25,6 +25,7 @@ import Svg, { Path } from "react-native-svg";
 import { captureRef } from "react-native-view-shot";
 
 import { normalizeApiError } from "@/api";
+import { getVendorRegistrationNumbers } from "@/api/accountSetupApi";
 import {
   createCertificateDraft,
   createStandaloneCertificateDraft,
@@ -41,7 +42,6 @@ import {
   type CertificateTemplate,
   type UpdateCertificatePayload,
 } from "@/api/certificatesApi";
-import { getVendorRegistrationNumbers } from "@/api/accountSetupApi";
 import type { FieldErrors } from "@/api/client";
 import {
   buildAppointmentInvoicePayload,
@@ -362,16 +362,17 @@ export default function CertificatesScreen() {
     return uploadedPhoto.file_url;
   }
   function makeAutomaticCertificateReference(
-  certificate: CertificateRecord | null,
-) {
-  if (!certificate?.id) {
-    return "";
-  }
+    certificate: CertificateRecord | null,
+  ) {
+    if (!certificate?.id) {
+      return "";
+    }
 
-  return `11D-${new Date().getFullYear()}-${String(
-    certificate.id,
-  ).padStart(7, "0")}`;
-}
+    return `11D-${new Date().getFullYear()}-${String(certificate.id).padStart(
+      7,
+      "0",
+    )}`;
+  }
   function createLocalDraft(
     nextDefinition: ElectricalCertificateDefinition,
     templateId: string | number,
@@ -434,14 +435,14 @@ export default function CertificatesScreen() {
 
       const response = await createStandaloneCertificateDraft(template.id);
 
-openEditor(response.certificate, null);
+      openEditor(response.certificate, null);
 
-setCertificates((current) => [
-  response.certificate,
-  ...current.filter((item) => item.id !== response.certificate.id),
-]);
+      setCertificates((current) => [
+        response.certificate,
+        ...current.filter((item) => item.id !== response.certificate.id),
+      ]);
 
-setNotice("Standalone certificate draft created.");
+      setNotice("Standalone certificate draft created.");
     });
   }
 
@@ -495,18 +496,18 @@ setNotice("Standalone certificate draft created.");
           : undefined),
       certificate_category: baseCertificate?.certificate_category,
       template_id: baseCertificate?.template_id,
-    customer_name:
-  answers["client_installation_details.client_name"] ||
-  answers["client_engineer.client_name"] ||
-  baseCertificate?.customer_name,
-     customer_email:
-  answers["client_installation_details.client_email"] ||
-  answers["client_engineer.client_email"] ||
-  baseCertificate?.customer_email,
+      customer_name:
+        answers["client_installation_details.client_name"] ||
+        answers["client_engineer.client_name"] ||
+        baseCertificate?.customer_name,
+      customer_email:
+        answers["client_installation_details.client_email"] ||
+        answers["client_engineer.client_email"] ||
+        baseCertificate?.customer_email,
       customer_phone:
-  answers["client_installation_details.client_telephone"] ||
-  answers["client_engineer.client_contact_number"] ||
-  baseCertificate?.customer_phone,
+        answers["client_installation_details.client_telephone"] ||
+        answers["client_engineer.client_contact_number"] ||
+        baseCertificate?.customer_phone,
       job_reference:
         answers["client_engineer.job_reference"] ||
         answers["client_engineer.certificate_number"] ||
@@ -526,14 +527,14 @@ setNotice("Standalone certificate draft created.");
       site_county: baseCertificate?.site_county,
       site_postcode:
         answers["client_engineer.postcode"] || baseCertificate?.site_postcode,
-  inspection_date:
-  definition.type === "pat"
-    ? answers["test_equipment_details.test_date"] ||
-      baseCertificate?.inspection_date
-    : definition.type === "cp12"
-      ? baseCertificate?.inspection_date || toDateValue(new Date())
-      : answers["client_engineer.issue_date"] ||
-        baseCertificate?.inspection_date,
+      inspection_date:
+        definition.type === "pat"
+          ? answers["test_equipment_details.test_date"] ||
+            baseCertificate?.inspection_date
+          : definition.type === "cp12"
+            ? baseCertificate?.inspection_date || toDateValue(new Date())
+            : answers["client_engineer.issue_date"] ||
+              baseCertificate?.inspection_date,
       inspection_time: baseCertificate?.inspection_time,
       next_due_date:
         getNextDueDate(definition, answers, tables) ||
@@ -603,11 +604,7 @@ setNotice("Standalone certificate draft created.");
   async function saveDraft(message = "Draft saved.") {
     if (!certificate) return null;
 
-    if (
-     
-      !certificate.id ||
-      String(certificate.id).startsWith("local-")
-    ) {
+    if (!certificate.id || String(certificate.id).startsWith("local-")) {
       const nextCertificate = {
         ...certificate,
         ...buildPayload(certificate),
@@ -651,20 +648,17 @@ setNotice("Standalone certificate draft created.");
   }
 
   async function generatePdf() {
-    if (
-  !certificate ||
-  !allStepsValid ||
-  (bookingId && !hasSiteAddress)
-) {
-  if (bookingId && !hasSiteAddress) {
-    setError(MISSING_SITE_ADDRESS_MESSAGE);
-  }
-  return;
-}
+    if (!certificate || !allStepsValid || (bookingId && !hasSiteAddress)) {
+      if (bookingId && !hasSiteAddress) {
+        setError(MISSING_SITE_ADDRESS_MESSAGE);
+      }
+      return;
+    }
+
     await runSaving(async () => {
       const savedCertificate = await saveDraft("");
+
       if (
-       
         !savedCertificate?.id ||
         String(savedCertificate.id).startsWith("local-")
       ) {
@@ -675,32 +669,45 @@ setNotice("Standalone certificate draft created.");
           pdf_url: null,
           url: null,
         };
+
         setCertificate(nextCertificate);
+
         setCertificates((current) =>
           current.map((item) =>
             item.id === savedCertificate?.id ? nextCertificate : item,
           ),
         );
+
         setNotice(
           "Certificate prepared locally. Link it to a job later to sync it to the server.",
         );
+
         return;
       }
 
       await syncRequiredSignatures();
+
       const latest = await getCertificate(savedCertificate.id);
+
       setCertificate(latest.certificate);
+
       const response = await submitCertificate(
-        certificate.id,
+        savedCertificate.id,
         buildPayload(latest.certificate),
       );
+
       setCertificate(response.certificate);
       setNotice("Certificate completed and PDF generated.");
-      // Offer the invoice on this screen instead of making the vendor find the
-      // invoice option after the certificate is done.
-      if (job) setIsInvoicePromptOpen(true);
+
+      if (job) {
+        setIsInvoicePromptOpen(true);
+      }
+
       const url = response.certificate.pdf_url ?? response.certificate.url;
-      if (url) await openPdfUrl(String(url));
+
+      if (url) {
+        await openPdfUrl(String(url));
+      }
     });
   }
 
@@ -968,11 +975,11 @@ setNotice("Standalone certificate draft created.");
             <Text style={ui.muted}>
               Answer the questions below. Required answers are marked with *.
             </Text>
-           {bookingId && !hasSiteAddress ? (
-  <Text style={styles.validation}>
-    {MISSING_SITE_ADDRESS_MESSAGE}
-  </Text>
-) : null}
+            {bookingId && !hasSiteAddress ? (
+              <Text style={styles.validation}>
+                {MISSING_SITE_ADDRESS_MESSAGE}
+              </Text>
+            ) : null}
           </Card>
 
           {step.fields ? (
@@ -980,14 +987,14 @@ setNotice("Standalone certificate draft created.");
               {step.fields.map((field) => (
                 <QuestionField
                   key={field.key}
-                 field={{
-  ...field,
-  readOnly:
-    field.key === "certificate_reference_number" &&
-    answers[`${step.key}.auto_certificate_reference`] === "1"
-      ? true
-      : field.readOnly,
-}}
+                  field={{
+                    ...field,
+                    readOnly:
+                      field.key === "certificate_reference_number" &&
+                      answers[`${step.key}.auto_certificate_reference`] === "1"
+                        ? true
+                        : field.readOnly,
+                  }}
                   value={answers[answerKey(step, field)] ?? ""}
                   errors={getFieldErrors(step, field, fieldErrors)}
                   onChange={(value) => {
@@ -999,12 +1006,13 @@ setNotice("Standalone certificate draft created.");
                         [answerKey(step, field)]: value,
                       };
                       if (field.key === "auto_certificate_reference") {
-  const checked = value === "1";
+                        const checked = value === "1";
 
-  next[`${step.key}.certificate_reference_number`] = checked
-    ? makeAutomaticCertificateReference(certificate)
-    : "";
-}
+                        next[`${step.key}.certificate_reference_number`] =
+                          checked
+                            ? makeAutomaticCertificateReference(certificate)
+                            : "";
+                      }
                       if (step.key === "final_checks") {
                         if (field.key === "co_alarm_fitted" && value !== "Yes")
                           next["final_checks.co_alarm_working"] = "";
@@ -1032,9 +1040,8 @@ setNotice("Standalone certificate draft created.");
                         ) {
                           if (value === "1") {
                             next["client_installation_details.occupier_name"] =
-                              next[
-                                "client_installation_details.client_name"
-                              ] || "";
+                              next["client_installation_details.client_name"] ||
+                              "";
                             next[
                               "client_installation_details.installation_address_line_1"
                             ] =
@@ -1195,11 +1202,11 @@ setNotice("Standalone certificate draft created.");
                 <ActionButton
                   label="Generate Certificate (PDF)"
                   disabled={
-  !allStepsValid ||
-  (bookingId && !hasSiteAddress) ||
-  isSaving ||
-  !isDraft
-}
+                    !allStepsValid ||
+                    (bookingId && !hasSiteAddress) ||
+                    isSaving ||
+                    !isDraft
+                  }
                   onPress={generatePdf}
                 />
               )}
@@ -1217,9 +1224,7 @@ setNotice("Standalone certificate draft created.");
                     label="View PDF"
                     secondary
                     onPress={() =>
-                      openPdfUrl(
-                        String(certificate.pdf_url ?? certificate.url),
-                      )
+                      openPdfUrl(String(certificate.pdf_url ?? certificate.url))
                     }
                   />
                 ) : null}
@@ -1290,7 +1295,8 @@ setNotice("Standalone certificate draft created.");
                           {getJobServiceName(attachableJob) || "Job"}
                         </Text>
                         <Text style={ui.muted}>
-                          {getJobCustomerName(attachableJob) || "Customer pending"}
+                          {getJobCustomerName(attachableJob) ||
+                            "Customer pending"}
                           {" · "}
                           {getJobDateTime(attachableJob) || "Date pending"}
                         </Text>
@@ -1410,67 +1416,67 @@ setNotice("Standalone certificate draft created.");
               const accent =
                 categoryAccents[group.title] ?? defaultCategoryAccent;
               return (
-              <View key={group.title} style={styles.categorySection}>
-                <Text style={[styles.categoryTitle, { color: accent.text }]}>
-                  {group.title}
-                </Text>
-                <View style={styles.categoryItems}>
-                  {group.definitions.map((item, itemIndex) => {
-                    const available = templates.some((template) =>
-                      matchesElectricalTemplate(template, item),
-                    );
-                    const cardNumber = `${groupIndex + 1}.${itemIndex + 1}`;
-                    return (
-                      <Pressable
-                        key={item.type}
-                        disabled={isSaving}
-                        onPress={() => createDraft(item)}
-                        style={({ pressed }) => [
-                          styles.certificateCard,
-                          pressed && ui.pressed,
-                          isSaving && styles.disabled,
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.certificateIcon,
-                            { backgroundColor: accent.badge },
+                <View key={group.title} style={styles.categorySection}>
+                  <Text style={[styles.categoryTitle, { color: accent.text }]}>
+                    {group.title}
+                  </Text>
+                  <View style={styles.categoryItems}>
+                    {group.definitions.map((item, itemIndex) => {
+                      const available = templates.some((template) =>
+                        matchesElectricalTemplate(template, item),
+                      );
+                      const cardNumber = `${groupIndex + 1}.${itemIndex + 1}`;
+                      return (
+                        <Pressable
+                          key={item.type}
+                          disabled={isSaving}
+                          onPress={() => createDraft(item)}
+                          style={({ pressed }) => [
+                            styles.certificateCard,
+                            pressed && ui.pressed,
+                            isSaving && styles.disabled,
                           ]}
                         >
-                          <Text
+                          <View
                             style={[
-                              styles.certificateNumber,
-                              { color: accent.text },
+                              styles.certificateIcon,
+                              { backgroundColor: accent.badge },
                             ]}
                           >
-                            {cardNumber}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={styles.certificateTitle}>
-                            {item.title}
-                          </Text>
-                          <Text style={ui.muted}>
-                            {item.steps.length} steps ·{" "}
-                            {available
-                              ? "Ready to generate"
-                              : "Template setup required"}
-                          </Text>
-                        </View>
-                        <SymbolView
-                          name={{
-                            ios: "chevron.right",
-                            android: "chevron_right",
-                            web: "chevron_right",
-                          }}
-                          size={20}
-                          tintColor="#8f99aa"
-                        />
-                      </Pressable>
-                    );
-                  })}
+                            <Text
+                              style={[
+                                styles.certificateNumber,
+                                { color: accent.text },
+                              ]}
+                            >
+                              {cardNumber}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={styles.certificateTitle}>
+                              {item.title}
+                            </Text>
+                            <Text style={ui.muted}>
+                              {item.steps.length} steps ·{" "}
+                              {available
+                                ? "Ready to generate"
+                                : "Template setup required"}
+                            </Text>
+                          </View>
+                          <SymbolView
+                            name={{
+                              ios: "chevron.right",
+                              android: "chevron_right",
+                              web: "chevron_right",
+                            }}
+                            size={20}
+                            tintColor="#8f99aa"
+                          />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
               );
             })}
           </View>
@@ -1707,15 +1713,15 @@ function QuestionField({
       <View style={styles.question}>
         <Text style={styles.questionLabel}>{label}</Text>
         {Platform.OS === "web" ? (
-  <TextInput
-    value={value}
-    onChangeText={onChange}
-    placeholder="YYYY-MM-DD"
-    placeholderTextColor="#737e8e"
-    style={ui.input}
-    {...({ type: "date" } as any)}
-  />
-) : (
+          <TextInput
+            value={value}
+            onChangeText={onChange}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#737e8e"
+            style={ui.input}
+            {...({ type: "date" } as any)}
+          />
+        ) : (
           <>
             <Pressable
               onPress={() => !field.readOnly && setShowDate(true)}
@@ -2257,7 +2263,9 @@ function ScheduleTable({
                 );
               })}
             </ScrollView>
-            <View style={[styles.modalActions, { paddingBottom: bottomSafeArea }]}>
+            <View
+              style={[styles.modalActions, { paddingBottom: bottomSafeArea }]}
+            >
               <ActionButton
                 label="Cancel"
                 secondary
@@ -2357,23 +2365,17 @@ function SignaturePad({
     if (!canvasSize.width || !canvasSize.height) return;
 
     const paddingX = 20;
-const paddingY = 20;
+    const paddingY = 20;
 
-const normalizedX = Math.max(
-  paddingX,
-  Math.min(
-    500 - paddingX,
-    (locationX / canvasSize.width) * 500,
-  ),
-);
+    const normalizedX = Math.max(
+      paddingX,
+      Math.min(500 - paddingX, (locationX / canvasSize.width) * 500),
+    );
 
-const normalizedY = Math.max(
-  paddingY,
-  Math.min(
-    300 - paddingY,
-    (locationY / canvasSize.height) * 300,
-  ),
-);
+    const normalizedY = Math.max(
+      paddingY,
+      Math.min(300 - paddingY, (locationY / canvasSize.height) * 300),
+    );
 
     setHasStartedDrawing(true);
 
@@ -2387,23 +2389,17 @@ const normalizedY = Math.max(
     if (!canvasSize.width || !canvasSize.height) return;
 
     const paddingX = 20;
-const paddingY = 20;
+    const paddingY = 20;
 
-const normalizedX = Math.max(
-  paddingX,
-  Math.min(
-    500 - paddingX,
-    (locationX / canvasSize.width) * 500,
-  ),
-);
+    const normalizedX = Math.max(
+      paddingX,
+      Math.min(500 - paddingX, (locationX / canvasSize.width) * 500),
+    );
 
-const normalizedY = Math.max(
-  paddingY,
-  Math.min(
-    300 - paddingY,
-    (locationY / canvasSize.height) * 300,
-  ),
-);
+    const normalizedY = Math.max(
+      paddingY,
+      Math.min(300 - paddingY, (locationY / canvasSize.height) * 300),
+    );
     setDraftPaths((current) => {
       if (!current.length) {
         return [`M${normalizedX.toFixed(1)} ${normalizedY.toFixed(1)}`];
@@ -2955,10 +2951,7 @@ function mergeJobPrefill(
   // ------------------------------------------------
   // CP12
   // ------------------------------------------------
-  if (
-  definition.type === "cp12" ||
-  definition.type === "pat"
-) {
+  if (definition.type === "cp12" || definition.type === "pat") {
     values["client_installation_details.client_name"] = customerName;
 
     values["client_installation_details.client_telephone"] = customerPhone;
@@ -3249,8 +3242,8 @@ function getNextDueDate(
     return answers["declaration.next_test_due"] || null;
   if (definition.type === "smoke_alarm")
     return answers["declaration.next_service_due"] || null;
- if (definition.type === "pat")
-  return answers["test_equipment_details.retest_date"] || null;
+  if (definition.type === "pat")
+    return answers["test_equipment_details.retest_date"] || null;
   if (definition.type === "cp12")
     return answers["final_checks.next_inspection_due"] || null;
   return null;
@@ -3333,8 +3326,8 @@ async function pathsToPngUpload(
 ): Promise<SignatureUpload | null> {
   if (typeof document === "undefined" || !paths.length) return null;
   const canvas = document.createElement("canvas");
- canvas.width = 1000;
-canvas.height = 600;
+  canvas.width = 1000;
+  canvas.height = 600;
   const context = canvas.getContext("2d");
   if (!context) return null;
   context.fillStyle = "#ffffff";
