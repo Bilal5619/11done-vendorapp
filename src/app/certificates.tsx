@@ -984,135 +984,155 @@ export default function CertificatesScreen() {
 
           {step.fields ? (
             <Card>
-              {step.fields.map((field) => (
-                <QuestionField
-                  key={field.key}
-                  field={{
-                    ...field,
-                    readOnly:
-                      field.key === "certificate_reference_number" &&
-                      answers[`${step.key}.auto_certificate_reference`] === "1"
-                        ? true
-                        : field.readOnly,
-                  }}
-                  value={answers[answerKey(step, field)] ?? ""}
-                  errors={getFieldErrors(step, field, fieldErrors)}
-                  onChange={(value) => {
-                    setError("");
-                    setFieldErrors({});
-                    setAnswers((current) => {
-                      const next = {
-                        ...current,
-                        [answerKey(step, field)]: value,
-                      };
-                      if (field.key === "auto_certificate_reference") {
-                        const checked = value === "1";
+              {step.fields.map((field) => {
+                const hideCustomerSignature =
+                  step.key === "declaration" &&
+                  field.signatureType === "customer" &&
+                  answers["declaration.customer_unavailable_to_sign"] === "Yes";
 
-                        next[`${step.key}.certificate_reference_number`] =
-                          checked
-                            ? makeAutomaticCertificateReference(certificate)
-                            : "";
-                      }
-                      if (step.key === "final_checks") {
-                        if (field.key === "co_alarm_fitted" && value !== "Yes")
-                          next["final_checks.co_alarm_working"] = "";
-                        if (
-                          field.key === "smoke_alarm_fitted" &&
-                          value !== "Yes"
-                        )
-                          next["final_checks.smoke_alarm_working"] = "";
-                      }
-                      if (step.key === "declaration") {
-                        if (
-                          field.key === "customer_unavailable_to_sign" &&
-                          value === "Yes"
-                        ) {
-                          next["declaration.customer_signature"] = "";
+                if (hideCustomerSignature) {
+                  return null;
+                }
+
+                return (
+                  <QuestionField
+                    key={field.key}
+                    field={{
+                      ...field,
+                      readOnly:
+                        field.key === "certificate_reference_number" &&
+                        answers[`${step.key}.auto_certificate_reference`] ===
+                          "1"
+                          ? true
+                          : field.readOnly,
+                    }}
+                    value={answers[answerKey(step, field)] ?? ""}
+                    errors={getFieldErrors(step, field, fieldErrors)}
+                    onChange={(value) => {
+                      setError("");
+                      setFieldErrors({});
+                      setAnswers((current) => {
+                        const next = {
+                          ...current,
+                          [answerKey(step, field)]: value,
+                        };
+                        if (field.key === "auto_certificate_reference") {
+                          const checked = value === "1";
+
+                          next[`${step.key}.certificate_reference_number`] =
+                            checked
+                              ? makeAutomaticCertificateReference(certificate)
+                              : "";
                         }
-                      }
-                      if (step.key === "client_installation_details") {
-                        const sameAddress =
-                          next[
-                            "client_installation_details.installation_same_as_client_address"
-                          ] === "1";
-                        if (
-                          field.key === "installation_same_as_client_address"
-                        ) {
-                          if (value === "1") {
-                            next["client_installation_details.occupier_name"] =
-                              next["client_installation_details.client_name"] ||
-                              "";
-                            next[
-                              "client_installation_details.installation_address_line_1"
-                            ] =
-                              next[
-                                "client_installation_details.client_address_line_1"
-                              ] || "";
-                            next[
-                              "client_installation_details.installation_address_line_2"
-                            ] =
-                              next[
-                                "client_installation_details.client_address_line_2"
-                              ] || "";
-                            next[
-                              "client_installation_details.installation_town_city"
-                            ] =
-                              next[
-                                "client_installation_details.client_town_city"
-                              ] || "";
-                            next[
-                              "client_installation_details.installation_county_region"
-                            ] =
-                              next[
-                                "client_installation_details.client_county_region"
-                              ] || "";
-                            next[
-                              "client_installation_details.installation_postcode"
-                            ] =
-                              next[
-                                "client_installation_details.client_postcode"
-                              ] || "";
-                            next[
-                              "client_installation_details.installation_telephone"
-                            ] =
-                              next[
-                                "client_installation_details.client_telephone"
-                              ] || "";
-                            next[
-                              "client_installation_details.installation_email"
-                            ] =
-                              next[
-                                "client_installation_details.client_email"
-                              ] || "";
+                        if (step.key === "final_checks") {
+                          if (
+                            field.key === "co_alarm_fitted" &&
+                            value !== "Yes"
+                          )
+                            next["final_checks.co_alarm_working"] = "";
+                          if (
+                            field.key === "smoke_alarm_fitted" &&
+                            value !== "Yes"
+                          )
+                            next["final_checks.smoke_alarm_working"] = "";
+                        }
+                        if (step.key === "declaration") {
+                          if (
+                            field.key === "customer_unavailable_to_sign" &&
+                            value === "Yes"
+                          ) {
+                            next["declaration.customer_signature"] = "";
                           }
-                        } else if (sameAddress) {
-                          const clientToInstallationMap: Record<
-                            string,
-                            string
-                          > = {
-                            client_name: "occupier_name",
-                            client_address_line_1:
-                              "installation_address_line_1",
-                            client_address_line_2:
-                              "installation_address_line_2",
-                            client_town_city: "installation_town_city",
-                            client_county_region: "installation_county_region",
-                            client_postcode: "installation_postcode",
-                            client_telephone: "installation_telephone",
-                            client_email: "installation_email",
-                          };
-                          const targetKey = clientToInstallationMap[field.key];
-                          if (targetKey)
-                            next[`client_installation_details.${targetKey}`] =
-                              value;
                         }
-                      }
-                      return next;
-                    });
-                  }}
-                  onSignatureFile={(file) => saveSignature(field, file)}
-                />
-              ))}
+                        if (step.key === "client_installation_details") {
+                          const sameAddress =
+                            next[
+                              "client_installation_details.installation_same_as_client_address"
+                            ] === "1";
+                          if (
+                            field.key === "installation_same_as_client_address"
+                          ) {
+                            if (value === "1") {
+                              next[
+                                "client_installation_details.occupier_name"
+                              ] =
+                                next[
+                                  "client_installation_details.client_name"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_address_line_1"
+                              ] =
+                                next[
+                                  "client_installation_details.client_address_line_1"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_address_line_2"
+                              ] =
+                                next[
+                                  "client_installation_details.client_address_line_2"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_town_city"
+                              ] =
+                                next[
+                                  "client_installation_details.client_town_city"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_county_region"
+                              ] =
+                                next[
+                                  "client_installation_details.client_county_region"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_postcode"
+                              ] =
+                                next[
+                                  "client_installation_details.client_postcode"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_telephone"
+                              ] =
+                                next[
+                                  "client_installation_details.client_telephone"
+                                ] || "";
+                              next[
+                                "client_installation_details.installation_email"
+                              ] =
+                                next[
+                                  "client_installation_details.client_email"
+                                ] || "";
+                            }
+                          } else if (sameAddress) {
+                            const clientToInstallationMap: Record<
+                              string,
+                              string
+                            > = {
+                              client_name: "occupier_name",
+                              client_address_line_1:
+                                "installation_address_line_1",
+                              client_address_line_2:
+                                "installation_address_line_2",
+                              client_town_city: "installation_town_city",
+                              client_county_region:
+                                "installation_county_region",
+                              client_postcode: "installation_postcode",
+                              client_telephone: "installation_telephone",
+                              client_email: "installation_email",
+                            };
+                            const targetKey =
+                              clientToInstallationMap[field.key];
+                            if (targetKey)
+                              next[`client_installation_details.${targetKey}`] =
+                                value;
+                          }
+                        }
+                        return next;
+                      });
+                    }}
+                    onSignatureFile={(file) => saveSignature(field, file)}
+                  />
+                );
+              })}
               {stepWarnings.length ? (
                 <View style={styles.warningBox}>
                   {stepWarnings.map((warning) => (
@@ -3066,9 +3086,12 @@ function normalizeTemplateFieldKey(key: string) {
 function getFieldErrors(
   step: ElectricalStep,
   field: ElectricalField,
-  errors: FieldErrors,
+  errors?: FieldErrors,
 ) {
+  const safeErrors = errors ?? {};
+
   const keys = [field.key, answerKey(step, field)];
+
   if (step.key === "client_engineer") {
     const aliases: Record<string, string[]> = {
       client_name: ["customer_name"],
@@ -3078,27 +3101,37 @@ function getFieldErrors(
       issue_date: ["inspection_date"],
       client_signature: ["customer_signature"],
     };
+
     keys.push(...(aliases[field.key] ?? []));
   }
-  if (field.signatureType === "engineer") keys.push("engineer_signature");
+
+  if (field.signatureType === "engineer") {
+    keys.push("engineer_signature");
+  }
+
   if (
     ["next_inspection_date", "next_test_due", "next_service_due"].includes(
       field.key,
     )
-  )
+  ) {
     keys.push("next_due_date");
-  return [...new Set(keys.flatMap((key) => errors[key] ?? []))];
+  }
+
+  return [...new Set(keys.flatMap((key) => safeErrors[key] ?? []))];
 }
 
 function findFirstErrorStep(
   definition: ElectricalCertificateDefinition,
-  errors: FieldErrors,
+  errors?: FieldErrors,
 ) {
+  const safeErrors = errors ?? {};
+
   return definition.steps.findIndex((step) => {
-    if (step.table && errors.items?.length) return true;
+    if (step.table && safeErrors.items?.length) return true;
+
     return (
       step.fields?.some(
-        (field) => getFieldErrors(step, field, errors).length,
+        (field) => getFieldErrors(step, field, safeErrors).length,
       ) ?? false
     );
   });
@@ -3266,7 +3299,9 @@ function formatApiError(error: unknown, fallback: string) {
 function formatNormalizedApiError(
   normalized: ReturnType<typeof normalizeApiError>,
 ) {
-  const details = Object.values(normalized.errors).flat().filter(Boolean);
+  const details = Object.values(normalized.errors ?? {})
+    .flat()
+    .filter(Boolean);
   if (normalized.status === 422) {
     return details.length
       ? `Please complete the required certificate information. ${details.join(" ")}`
