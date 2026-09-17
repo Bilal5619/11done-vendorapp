@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -106,11 +107,15 @@ export function ProtectedScreen({
   children,
   scroll = true,
   scrollRef,
+  onRefresh,
+  refreshing = false,
 }: PropsWithChildren<{
   title: string;
   activeRoute: AppRoute;
   scroll?: boolean;
   scrollRef?: RefObject<ScrollView | null>;
+  onRefresh?: () => Promise<void> | void;
+  refreshing?: boolean;
 }>) {
   const { token, isRestoring } = useAuth();
   const { isComplete, isLoading: isCheckingAccount } = useAccountStatus();
@@ -154,6 +159,11 @@ export function ProtectedScreen({
       keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        ) : undefined
+      }
     >
       {children}
     </ScrollView>
@@ -213,6 +223,22 @@ export function Header({
       <Text style={ui.headerTitle}>{title}</Text>
       <View style={ui.headerActions}>
         <Pressable
+          onPress={() => router.push("/leads")}
+          hitSlop={10}
+          style={ui.headerIcon}
+        >
+          <SymbolView
+            name={{
+              ios: "megaphone.fill",
+              android: "campaign",
+              web: "campaign",
+            }}
+            size={21}
+            tintColor="#f8fafc"
+          />
+        </Pressable>
+
+        <Pressable
           onPress={() => router.push("/notifications")}
           hitSlop={10}
           style={ui.headerIcon}
@@ -226,6 +252,7 @@ export function Header({
             size={20}
             tintColor="#f8fafc"
           />
+
           {unreadCount > 0 ? (
             <View style={ui.notificationBadge}>
               <Text style={ui.notificationBadgeText}>
@@ -234,7 +261,6 @@ export function Header({
             </View>
           ) : null}
         </Pressable>
-        <View style={ui.headerIcon} />
       </View>
     </View>
   );
