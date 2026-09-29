@@ -8,6 +8,8 @@
     "scheme": "donevendorapp",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "co.uk.elevendone.vendor",
       "icon": "./assets/images/icon.png"
     },
     "android": {
