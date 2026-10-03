@@ -53,6 +53,7 @@ import {
   Card,
   ErrorState,
   openExternalUrl,
+  sharePdf,
   ProtectedScreen,
   StatusPill,
   ui,
@@ -141,6 +142,7 @@ export default function CertificatesScreen() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [notice, setNotice] = useState("");
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [registrationNumbers, setRegistrationNumbers] = useState<
     VendorRegistrationNumber[]
   >([]);
@@ -648,6 +650,30 @@ setNotice("Standalone certificate draft created.");
       url,
       "The certificate was generated, but this device could not open it directly. Try again in a moment, or open it from a browser.",
     );
+  }
+
+  /**
+   * Send the finished certificate on, or keep a copy of it. Both arrive at the
+   * phone's share sheet, which is where saving to Files lives as well; only the
+   * sheet's title tells them apart.
+   */
+  async function handleCertificatePdf(dialogTitle: string) {
+    const url = certificate?.pdf_url ?? certificate?.url;
+    if (!url) return;
+
+    setIsPreparingPdf(true);
+    const shared = await sharePdf(
+      String(url),
+      `${definition?.title ?? "certificate"}-${certificate?.id ?? ""}`,
+      dialogTitle,
+    );
+    setIsPreparingPdf(false);
+
+    if (!shared) {
+      setError(
+        "Could not open the certificate PDF. Check your connection and try again in a moment.",
+      );
+    }
   }
 
   async function generatePdf() {
@@ -1213,15 +1239,27 @@ setNotice("Standalone certificate draft created.");
               </Text>
               <View style={styles.actions}>
                 {certificate.pdf_url || certificate.url ? (
-                  <ActionButton
-                    label="View PDF"
-                    secondary
-                    onPress={() =>
-                      openPdfUrl(
-                        String(certificate.pdf_url ?? certificate.url),
-                      )
-                    }
-                  />
+                  <>
+                    <ActionButton
+                      label="View PDF"
+                      secondary
+                      onPress={() =>
+                        openPdfUrl(
+                          String(certificate.pdf_url ?? certificate.url),
+                        )
+                      }
+                    />
+                    <ActionButton
+                      label={isPreparingPdf ? "Preparing…" : "Share"}
+                      secondary
+                      onPress={() => handleCertificatePdf("Share certificate")}
+                    />
+                    <ActionButton
+                      label="Download"
+                      secondary
+                      onPress={() => handleCertificatePdf("Save certificate")}
+                    />
+                  </>
                 ) : null}
                 {bookingId ? (
                   <ActionButton

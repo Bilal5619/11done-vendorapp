@@ -1,5 +1,7 @@
+import { Directory, File, Paths } from "expo-file-system";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
+import * as Sharing from "expo-sharing";
 import { SymbolView } from "expo-symbols";
 import {
   PropsWithChildren,
@@ -98,6 +100,76 @@ export async function openExternalUrl(
     await Linking.openURL(url);
   } catch {
     Alert.alert("Could not open this", failureMessage);
+  }
+}
+
+/**
+ * Turn a PDF's web address into a file sitting on this device.
+ *
+ * Share used to be handed the https:// address directly, but shareAsync only
+ * ever accepts a local file — so the sheet never opened and the button looked
+ * dead. The file has to be fetched down first, and once it is here the same
+ * copy serves both sharing and saving.
+ *
+ * The name matters: whatever is on disk is what the person sees in the share
+ * sheet and in their Files app, so a readable invoice or certificate number
+ * is passed in rather than leaving the server's random filename.
+ */
+async function downloadPdf(url: string, suggestedName: string): Promise<File> {
+  const folder = new Directory(Paths.cache, "11done-pdfs");
+  if (!folder.exists) {
+    folder.create({ intermediates: true });
+  }
+
+  const safeName = (suggestedName || "document")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  const fileName = safeName.toLowerCase().endsWith(".pdf")
+    ? safeName
+    : `${safeName}.pdf`;
+
+  // Downloading the same invoice twice otherwise rejects with
+  // DestinationAlreadyExists; idempotent replaces the earlier copy instead,
+  // which is what someone tapping Share a second time expects.
+  //
+  // A link that has expired comes back as 403, and downloadFileAsync rejects
+  // on any non-2xx without writing anything — so a stale link can never leave
+  // an error page sitting on the phone named "invoice.pdf".
+  return File.downloadFileAsync(url, new File(folder, fileName), {
+    idempotent: true,
+  });
+}
+
+/**
+ * Hand a PDF to the share sheet, where it can be sent on or saved to the
+ * phone. Returns false when nothing could be opened, so the caller can say so
+ * in its own words rather than this guessing at the wording.
+ */
+export async function sharePdf(
+  url: string,
+  suggestedName: string,
+  dialogTitle = "Share PDF",
+): Promise<boolean> {
+  if (!url) return false;
+
+  try {
+    if (!(await Sharing.isAvailableAsync())) {
+      // No share sheet on this device — opening it in the browser still lets
+      // them get at the file, which is better than refusing outright.
+      await openExternalUrl(url);
+      return true;
+    }
+
+    const file = await downloadPdf(url, suggestedName);
+    await Sharing.shareAsync(file.uri, {
+      mimeType: "application/pdf",
+      UTI: "com.adobe.pdf",
+      dialogTitle,
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
