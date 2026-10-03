@@ -1,4 +1,3 @@
-import { SymbolView } from 'expo-symbols';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -7,7 +6,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { getJobs } from '@/api/jobsApi';
 import { normalizeApiError } from '@/api';
 import { InvoiceForm } from '@/components/invoice-form';
-import { EmptyState, ErrorState, openExternalUrl, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
+import { AppIcon, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
 import type { JobSummary } from '@/types/vendor';
 import {
   getJobAddress,
@@ -142,7 +141,7 @@ function InvoiceJobCard({ job, onChanged }: { job: JobSummary; onChanged: () => 
 function Info({ icon, text }: { icon: 'calendar_month' | 'payments' | 'check_circle'; text: string }) {
   return (
     <View style={ui.row}>
-      <SymbolView name={{ ios: 'circle', android: icon, web: icon }} size={15} tintColor="#ff6a00" />
+      <AppIcon name={{ ios: 'circle', android: icon, web: icon }} size={15} tintColor="#ff6a00" />
       <Text style={ui.muted}>{text}</Text>
     </View>
   );

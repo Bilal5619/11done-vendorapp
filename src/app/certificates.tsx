@@ -5,7 +5,6 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -49,16 +48,7 @@ import {
   getJob,
   getJobs,
 } from "@/api/jobsApi";
-import {
-  Card,
-  ErrorState,
-  openExternalUrl,
-  sharePdf,
-  ProtectedScreen,
-  StatusPill,
-  ui,
-  useBottomSafeArea,
-} from "@/components/vendor-ui";
+import { AppIcon, Card, ErrorState, openExternalUrl, ProtectedScreen, sharePdf, StatusPill, ui, useBottomSafeArea } from '@/components/vendor-ui';
 import {
   electricalCertificates,
   getElectricalDefinition,
@@ -1303,7 +1293,7 @@ setNotice("Standalone certificate draft created.");
                     onPress={() => setIsJobPickerOpen(false)}
                     style={styles.iconButton}
                   >
-                    <SymbolView
+                    <AppIcon
                       name={{ ios: "xmark", android: "close", web: "close" }}
                       size={21}
                       tintColor="#f8fafc"
@@ -1495,7 +1485,7 @@ setNotice("Standalone certificate draft created.");
                               : "Template setup required"}
                           </Text>
                         </View>
-                        <SymbolView
+                        <AppIcon
                           name={{
                             ios: "chevron.right",
                             android: "chevron_right",
@@ -1762,7 +1752,7 @@ function QuestionField({
               <Text style={value ? ui.value : ui.muted}>
                 {value ? formatUkDate(value) : "Select date"}
               </Text>
-              <SymbolView
+              <AppIcon
                 name={{
                   ios: "calendar",
                   android: "calendar_month",
@@ -2115,7 +2105,7 @@ function ScheduleTable({
                 </Text>
               </View>
               <Pressable onPress={() => open(index)} style={styles.iconButton}>
-                <SymbolView
+                <AppIcon
                   name={{ ios: "pencil", android: "edit", web: "edit" }}
                   size={18}
                   tintColor="#58a6ff"
@@ -2127,7 +2117,7 @@ function ScheduleTable({
                 }
                 style={styles.iconButton}
               >
-                <SymbolView
+                <AppIcon
                   name={{ ios: "trash", android: "delete", web: "delete" }}
                   size={18}
                   tintColor="#ff8585"
@@ -2173,7 +2163,7 @@ function ScheduleTable({
                 }}
                 style={styles.iconButton}
               >
-                <SymbolView
+                <AppIcon
                   name={{ ios: "xmark", android: "close", web: "close" }}
                   size={21}
                   tintColor="#f8fafc"

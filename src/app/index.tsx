@@ -1,6 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AuthError, useAuth } from "@/context/AuthContext";
+import { AppIcon } from '@/components/vendor-ui';
 
 const fontFamily = Platform.select({
   web: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -102,7 +102,7 @@ export default function LoginScreen() {
                     fieldErrors.email && styles.inputError,
                   ]}
                 >
-                  <SymbolView
+                  <AppIcon
                     name={{ ios: "envelope", android: "mail", web: "mail" }}
                     size={18}
                     tintColor="#7b8798"
@@ -127,7 +127,7 @@ export default function LoginScreen() {
                     fieldErrors.password && styles.inputError,
                   ]}
                 >
-                  <SymbolView
+                  <AppIcon
                     name={{ ios: "lock", android: "lock", web: "lock" }}
                     size={18}
                     tintColor="#7b8798"
@@ -145,7 +145,7 @@ export default function LoginScreen() {
                     hitSlop={10}
                     style={styles.iconButton}
                   >
-                    <SymbolView
+                    <AppIcon
                       name={{
                         ios: isPasswordVisible ? "eye.slash" : "eye",
                         android: isPasswordVisible
@@ -175,7 +175,7 @@ export default function LoginScreen() {
                 ) : (
                   <>
                     <Text style={styles.primaryButtonText}>Sign In</Text>
-                    <SymbolView
+                    <AppIcon
                       name={{
                         ios: "arrow.right",
                         android: "arrow_forward",
@@ -250,7 +250,7 @@ function TrustBadge({
 }) {
   return (
     <View style={styles.badge}>
-      <SymbolView
+      <AppIcon
         name={{ ios: "checkmark.shield", android: icon, web: icon }}
         size={14}
         tintColor="#17c7a3"

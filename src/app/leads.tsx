@@ -1,5 +1,4 @@
 import * as WebBrowser from 'expo-web-browser';
-import { SymbolView } from 'expo-symbols';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
@@ -15,7 +14,7 @@ import {
   type Lead,
 } from '@/api/leadsApi';
 import { normalizeApiError } from '@/api';
-import { EmptyState, ErrorState, openExternalUrl, ProtectedScreen, ui } from '@/components/vendor-ui';
+import { AppIcon, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, ui } from '@/components/vendor-ui';
 
 type TabKey = 'available' | 'mine';
 
@@ -249,7 +248,7 @@ function LeadCard({
       ) : (
         <>
           <View style={styles.lockedRow}>
-            <SymbolView
+            <AppIcon
               name={{ ios: 'lock.fill', android: 'lock', web: 'lock' }}
               size={15}
               tintColor="#8a94a6"
@@ -452,7 +451,7 @@ type InfoIcon = 'location_on' | 'handyman' | 'payments';
 function Info({ icon, text }: { icon: InfoIcon; text: string }) {
   return (
     <View style={ui.row}>
-      <SymbolView name={{ ios: 'circle', android: icon, web: icon }} size={15} tintColor="#8a94a6" />
+      <AppIcon name={{ ios: 'circle', android: icon, web: icon }} size={15} tintColor="#8a94a6" />
       <Text style={ui.muted}>{text}</Text>
     </View>
   );

@@ -2,7 +2,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { SymbolView } from "expo-symbols";
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import {
   PropsWithChildren,
   RefObject,
@@ -101,6 +101,47 @@ export async function openExternalUrl(
   } catch {
     Alert.alert("Could not open this", failureMessage);
   }
+}
+
+/**
+ * An icon that is never simply absent.
+ *
+ * SymbolView draws nothing at all when it cannot resolve a name — and it
+ * cannot when the SF Symbol is spelled differently, or was added in a newer
+ * iOS than the phone is running. The icon does not fall back, it just leaves
+ * a hole, which is why some icons were missing on iPhone while the rest were
+ * fine. Nothing in the code looks wrong, because nothing is wrong until it
+ * runs on a particular device.
+ *
+ * Every icon in the app goes through here so that a name that fails still
+ * leaves a small shape in the right colour and the right size. The layout
+ * never collapses, and a missing glyph can never again read as a blank gap.
+ */
+export function AppIcon({ fallback, ...props }: SymbolViewProps) {
+  const size = props.size ?? 24;
+
+  return (
+    <SymbolView
+      {...props}
+      fallback={
+        fallback ?? (
+          // Deliberately quiet: a soft tinted chip reads as "an icon belongs
+          // here", where a solid block would read as something broken.
+          <View
+            style={{
+              width: size,
+              height: size,
+              borderRadius: Math.max(3, size * 0.28),
+              borderWidth: Math.max(1, size * 0.07),
+              borderColor: (props.tintColor as string) ?? "#ff6a00",
+              backgroundColor: (props.tintColor as string) ?? "#ff6a00",
+              opacity: 0.32,
+            }}
+          />
+        )
+      }
+    />
+  );
 }
 
 /**
@@ -275,7 +316,7 @@ export function Header({
         hitSlop={12}
         style={ui.headerIcon}
       >
-        <SymbolView
+        <AppIcon
           name={{ ios: "line.horizontal.3", android: "menu", web: "menu" }}
           size={22}
           tintColor="#f8fafc"
@@ -288,7 +329,7 @@ export function Header({
           hitSlop={10}
           style={ui.headerIcon}
         >
-          <SymbolView
+          <AppIcon
             name={{
               ios: "bell.fill",
               android: "notifications",
@@ -322,7 +363,7 @@ export function BottomNav({ activeRoute }: { activeRoute: AppRoute }) {
             onPress={() => router.replace(item.route)}
             style={({ pressed }) => [ui.bottomTab, pressed && ui.pressed]}
           >
-            <SymbolView
+            <AppIcon
               name={{
                 ios: isActive ? "circle.fill" : "circle",
                 android: item.icon,
@@ -510,7 +551,7 @@ function DrawerMenu({
                   isActive && ui.drawerItemActive,
                 ]}
               >
-                <SymbolView
+                <AppIcon
                   name={{
                     ios: mapped.ios as any,
                     android: mapped.android as any,

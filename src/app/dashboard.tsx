@@ -1,4 +1,3 @@
-import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -6,7 +5,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { getVendorDashboard, type DashboardResponse, type DashboardSummary } from '@/api/dashboardApi';
 import { normalizeApiError } from '@/api';
-import { Card, EmptyState, ErrorState, ProtectedScreen, SectionIntro, StatusPill, ui } from '@/components/vendor-ui';
+import { AppIcon, Card, EmptyState, ErrorState, ProtectedScreen, SectionIntro, StatusPill, ui } from '@/components/vendor-ui';
 import { useAuth } from '@/context/AuthContext';
 import type { JobSummary } from '@/types/vendor';
 import { getJobAddress, getJobBookingId, getJobCustomerName, getJobDateTime, getJobServiceName, getJobStatus } from '@/types/vendor';
@@ -101,7 +100,7 @@ function RecentJobRow({ job }: { job: JobSummary }) {
       <Text style={ui.muted}>{getJobServiceName(job)}</Text>
       <Text style={ui.muted}>{getJobCustomerName(job) || 'Customer'} - {getJobAddress(job) || 'Address pending'}</Text>
       <View style={ui.row}>
-        <SymbolView name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }} size={16} tintColor="#ff6a00" />
+        <AppIcon name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }} size={16} tintColor="#ff6a00" />
         <Text style={ui.muted}>{getJobDateTime(job) || 'Date/time pending'}</Text>
       </View>
     </Pressable>

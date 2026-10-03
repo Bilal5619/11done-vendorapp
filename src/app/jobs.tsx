@@ -1,4 +1,3 @@
-import { SymbolView } from 'expo-symbols';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -6,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { acceptJob, claimAvailableJob, getJobs, rejectJob } from '@/api/jobsApi';
 import { normalizeApiError } from '@/api';
-import { EmptyState, ErrorState, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
+import { AppIcon, EmptyState, ErrorState, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
 import { useNotificationMonitor } from '@/context/NotificationMonitorContext';
 import type { JobSummary, JobTabKey } from '@/types/vendor';
 import { getJobAddress, getJobBookingId, getJobCustomerName, getJobDateTime, getJobPaymentStatus, getJobServiceName, getJobStatus } from '@/types/vendor';
@@ -163,7 +162,7 @@ function JobCard({ job, activeTab, onChanged }: { job: JobSummary; activeTab: Jo
 function JobActionButton({ label, onPress, disabled, secondary }: { label: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) {
   return (
     <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [secondary ? ui.secondaryButton : ui.primaryButton, pressed && ui.pressed, disabled && { opacity: 0.5 }]}>
-      <SymbolView name={{ ios: 'circle', android: label === 'Reject' ? 'close' : 'check', web: label === 'Reject' ? 'close' : 'check' }} size={16} tintColor={secondary ? '#f8fafc' : '#101214'} />
+      <AppIcon name={{ ios: 'circle', android: label === 'Reject' ? 'close' : 'check', web: label === 'Reject' ? 'close' : 'check' }} size={16} tintColor={secondary ? '#f8fafc' : '#101214'} />
       <Text style={secondary ? ui.secondaryButtonText : ui.primaryButtonText}>{label}</Text>
     </Pressable>
   );
@@ -208,7 +207,7 @@ const styles = StyleSheet.create({
 function Info({ icon, text }: { icon: 'calendar_month' | 'payments'; text: string }) {
   return (
     <View style={ui.row}>
-      <SymbolView name={{ ios: 'circle', android: icon, web: icon }} size={15} tintColor="#ff6a00" />
+      <AppIcon name={{ ios: 'circle', android: icon, web: icon }} size={15} tintColor="#ff6a00" />
       <Text style={ui.muted}>{text}</Text>
     </View>
   );

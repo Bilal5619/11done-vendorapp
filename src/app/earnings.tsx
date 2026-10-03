@@ -1,4 +1,3 @@
-import { SymbolView } from 'expo-symbols';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -6,7 +5,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { getJobs } from '@/api/jobsApi';
 import { normalizeApiError } from '@/api';
-import { Card, EmptyState, ErrorState, ProtectedScreen, ui } from '@/components/vendor-ui';
+import { AppIcon, Card, EmptyState, ErrorState, ProtectedScreen, ui } from '@/components/vendor-ui';
 import type { JobSummary } from '@/types/vendor';
 import {
   getJobCommissionAmount,
@@ -139,7 +138,7 @@ function Row({
       </View>
       {hint ? (
         <View style={[ui.row, { marginTop: 2 }]}>
-          <SymbolView
+          <AppIcon
             name={{ ios: 'info.circle', android: 'info', web: 'info' }}
             size={12}
             tintColor="#737e8e"
