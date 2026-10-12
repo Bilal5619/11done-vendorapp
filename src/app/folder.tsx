@@ -1,4 +1,3 @@
-import * as Sharing from 'expo-sharing';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -6,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'reac
 
 import { getBookingCertificates, getCertificates } from '@/api/certificatesApi';
 import { normalizeApiError } from '@/api';
-import { Card, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, SectionIntro, ui } from '@/components/vendor-ui';
+import { Card, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, SectionIntro, sharePdf, ui } from '@/components/vendor-ui';
 import type { CertificateSummary } from '@/types/vendor';
 import { getCertificateDate, getCertificateService, getCertificateTitle } from '@/types/vendor';
 
@@ -17,6 +16,7 @@ export default function FolderScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadFolder = useCallback(async () => {
     setIsLoading(true);
@@ -52,20 +52,31 @@ export default function FolderScreen() {
     await openExternalUrl(url, 'This device could not open it directly. Try again in a moment.');
   }
 
-  async function handleShare(certificate: CertificateSummary) {
+  /**
+   * Share and Download both end at the share sheet — it is where the phone
+   * offers both sending the certificate on and keeping a copy. Only the title
+   * of the sheet changes.
+   */
+  async function handlePdf(certificate: CertificateSummary, dialogTitle: string) {
     const url = certificate.pdf_url ?? certificate.url;
     if (!url) {
       setError('This certificate does not have a PDF URL yet.');
       return;
     }
-    try {
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(String(url));
-        return;
-      }
-      await openPdfUrl(String(url));
-    } catch {
-      Alert.alert('Could not share the PDF', 'Please try again in a moment.');
+
+    setBusyId(String(certificate.id));
+    const shared = await sharePdf(
+      String(url),
+      `${getCertificateTitle(certificate)}-${certificate.booking_number ?? certificate.id}`,
+      dialogTitle,
+    );
+    setBusyId(null);
+
+    if (!shared) {
+      Alert.alert(
+        'Could not open the PDF',
+        'Check your connection and try again in a moment.',
+      );
     }
   }
 
@@ -106,8 +117,21 @@ export default function FolderScreen() {
                   <Pressable onPress={() => openPdfUrl(String(certificate.pdf_url ?? certificate.url))} style={ui.secondaryButton}>
                     <Text style={ui.secondaryButtonText}>View PDF</Text>
                   </Pressable>
-                  <Pressable onPress={() => handleShare(certificate)} style={ui.secondaryButton}>
-                    <Text style={ui.secondaryButtonText}>Share</Text>
+                  <Pressable
+                    onPress={() => handlePdf(certificate, 'Share certificate')}
+                    disabled={busyId === String(certificate.id)}
+                    style={ui.secondaryButton}
+                  >
+                    <Text style={ui.secondaryButtonText}>
+                      {busyId === String(certificate.id) ? 'Preparing…' : 'Share'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handlePdf(certificate, 'Save certificate')}
+                    disabled={busyId === String(certificate.id)}
+                    style={ui.secondaryButton}
+                  >
+                    <Text style={ui.secondaryButtonText}>Download</Text>
                   </Pressable>
                 </>
               ) : null}

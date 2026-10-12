@@ -1,6 +1,8 @@
+import { Directory, File, Paths } from "expo-file-system";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
+import * as Sharing from "expo-sharing";
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { PropsWithChildren, RefObject, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -98,6 +100,117 @@ export async function openExternalUrl(
     await Linking.openURL(url);
   } catch {
     Alert.alert("Could not open this", failureMessage);
+  }
+}
+
+/**
+ * An icon that is never simply absent.
+ *
+ * SymbolView draws nothing at all when it cannot resolve a name — and it
+ * cannot when the SF Symbol is spelled differently, or was added in a newer
+ * iOS than the phone is running. The icon does not fall back, it just leaves
+ * a hole, which is why some icons were missing on iPhone while the rest were
+ * fine. Nothing in the code looks wrong, because nothing is wrong until it
+ * runs on a particular device.
+ *
+ * Every icon in the app goes through here so that a name that fails still
+ * leaves a small shape in the right colour and the right size. The layout
+ * never collapses, and a missing glyph can never again read as a blank gap.
+ */
+export function AppIcon({ fallback, ...props }: SymbolViewProps) {
+  const size = props.size ?? 24;
+
+  return (
+    <SymbolView
+      {...props}
+      fallback={
+        fallback ?? (
+          // Deliberately quiet: a soft tinted chip reads as "an icon belongs
+          // here", where a solid block would read as something broken.
+          <View
+            style={{
+              width: size,
+              height: size,
+              borderRadius: Math.max(3, size * 0.28),
+              borderWidth: Math.max(1, size * 0.07),
+              borderColor: (props.tintColor as string) ?? "#ff6a00",
+              backgroundColor: (props.tintColor as string) ?? "#ff6a00",
+              opacity: 0.32,
+            }}
+          />
+        )
+      }
+    />
+  );
+}
+
+/**
+ * Turn a PDF's web address into a file sitting on this device.
+ *
+ * Share used to be handed the https:// address directly, but shareAsync only
+ * ever accepts a local file — so the sheet never opened and the button looked
+ * dead. The file has to be fetched down first, and once it is here the same
+ * copy serves both sharing and saving.
+ *
+ * The name matters: whatever is on disk is what the person sees in the share
+ * sheet and in their Files app, so a readable invoice or certificate number
+ * is passed in rather than leaving the server's random filename.
+ */
+async function downloadPdf(url: string, suggestedName: string): Promise<File> {
+  const folder = new Directory(Paths.cache, "11done-pdfs");
+  if (!folder.exists) {
+    folder.create({ intermediates: true });
+  }
+
+  const safeName = (suggestedName || "document")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  const fileName = safeName.toLowerCase().endsWith(".pdf")
+    ? safeName
+    : `${safeName}.pdf`;
+
+  // Downloading the same invoice twice otherwise rejects with
+  // DestinationAlreadyExists; idempotent replaces the earlier copy instead,
+  // which is what someone tapping Share a second time expects.
+  //
+  // A link that has expired comes back as 403, and downloadFileAsync rejects
+  // on any non-2xx without writing anything — so a stale link can never leave
+  // an error page sitting on the phone named "invoice.pdf".
+  return File.downloadFileAsync(url, new File(folder, fileName), {
+    idempotent: true,
+  });
+}
+
+/**
+ * Hand a PDF to the share sheet, where it can be sent on or saved to the
+ * phone. Returns false when nothing could be opened, so the caller can say so
+ * in its own words rather than this guessing at the wording.
+ */
+export async function sharePdf(
+  url: string,
+  suggestedName: string,
+  dialogTitle = "Share PDF",
+): Promise<boolean> {
+  if (!url) return false;
+
+  try {
+    if (!(await Sharing.isAvailableAsync())) {
+      // No share sheet on this device — opening it in the browser still lets
+      // them get at the file, which is better than refusing outright.
+      await openExternalUrl(url);
+      return true;
+    }
+
+    const file = await downloadPdf(url, suggestedName);
+    await Sharing.shareAsync(file.uri, {
+      mimeType: "application/pdf",
+      UTI: "com.adobe.pdf",
+      dialogTitle,
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -214,7 +327,7 @@ export function Header({
         hitSlop={12}
         style={ui.headerIcon}
       >
-        <SymbolView
+        <AppIcon
           name={{ ios: "line.horizontal.3", android: "menu", web: "menu" }}
           size={22}
           tintColor="#f8fafc"
@@ -243,7 +356,7 @@ export function Header({
           hitSlop={10}
           style={ui.headerIcon}
         >
-          <SymbolView
+          <AppIcon
             name={{
               ios: "bell.fill",
               android: "notifications",
@@ -277,7 +390,7 @@ export function BottomNav({ activeRoute }: { activeRoute: AppRoute }) {
             onPress={() => router.replace(item.route)}
             style={({ pressed }) => [ui.bottomTab, pressed && ui.pressed]}
           >
-            <SymbolView
+            <AppIcon
               name={{
                 ios: isActive ? "circle.fill" : "circle",
                 android: item.icon,
@@ -465,7 +578,7 @@ function DrawerMenu({
                   isActive && ui.drawerItemActive,
                 ]}
               >
-                <SymbolView
+                <AppIcon
                   name={{
                     ios: mapped.ios as any,
                     android: mapped.android as any,

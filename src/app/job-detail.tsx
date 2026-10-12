@@ -1,7 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
 
 import {
   useCallback,
@@ -26,16 +25,7 @@ import { normalizeApiError } from "@/api";
 import type { FieldErrors } from "@/api/client";
 import { acceptJob, completeJob, getJob, rejectJob } from "@/api/jobsApi";
 import { InvoiceForm } from "@/components/invoice-form";
-import {
-  Card,
-  EmptyState,
-  ErrorState,
-  fontFamily,
-  openExternalUrl,
-  ProtectedScreen,
-  StatusPill,
-  ui,
-} from "@/components/vendor-ui";
+import { AppIcon, Card, EmptyState, ErrorState, fontFamily, openExternalUrl, ProtectedScreen, StatusPill, ui } from '@/components/vendor-ui';
 import type { JobDetail } from "@/types/vendor";
 import {
   getJobAddress,
@@ -304,7 +294,7 @@ export default function JobDetailScreen() {
             <View style={styles.heroAccent} />
             <View style={styles.heroTopline}>
               <View style={styles.referenceBadge}>
-                <SymbolView
+                <AppIcon
                   name={{ ios: "briefcase.fill", android: "work", web: "work" }}
                   size={15}
                   tintColor="#ff9a4b"
@@ -385,7 +375,7 @@ export default function JobDetailScreen() {
           {error ? <ErrorState message={error} /> : null}
           {success ? (
             <View style={styles.successBanner}>
-              <SymbolView
+              <AppIcon
                 name={{
                   ios: "checkmark.circle.fill",
                   android: "check_circle",
@@ -698,7 +688,7 @@ function Metric({
   return (
     <View style={[styles.metric, accent && styles.metricAccent]}>
       <View style={[styles.metricIcon, accent && styles.metricIconAccent]}>
-        <SymbolView
+        <AppIcon
           name={jobIcons[icon]}
           size={18}
           tintColor={accent ? "#1b1009" : "#9ec5ff"}
@@ -731,7 +721,7 @@ function QuickAction({
       onPress={onPress}
       style={({ pressed }) => [styles.quickAction, pressed && ui.pressed]}
     >
-      <SymbolView name={jobIcons[icon]} size={17} tintColor="#dbe9ff" />
+      <AppIcon name={jobIcons[icon]} size={17} tintColor="#dbe9ff" />
       <Text style={styles.quickActionText}>{label}</Text>
     </Pressable>
   );
@@ -747,7 +737,7 @@ function InfoPanel({
     <View style={styles.infoPanel}>
       <View style={styles.panelHeader}>
         <View style={styles.panelIcon}>
-          <SymbolView name={jobIcons[icon]} size={19} tintColor="#ff9a4b" />
+          <AppIcon name={jobIcons[icon]} size={19} tintColor="#ff9a4b" />
         </View>
         <View style={styles.panelHeading}>
           <Text style={styles.panelTitle}>{title}</Text>
@@ -770,7 +760,7 @@ function InfoRow({
 }) {
   return (
     <View style={styles.infoRow}>
-      <SymbolView name={jobIcons[icon]} size={17} tintColor="#72819b" />
+      <AppIcon name={jobIcons[icon]} size={17} tintColor="#72819b" />
       <View style={styles.infoRowCopy}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue} selectable>
@@ -1067,7 +1057,7 @@ function ActionButton({
         disabled && { opacity: 0.5 },
       ]}
     >
-      <SymbolView
+      <AppIcon
         name={{
           ios: "circle",
           android: label === "Reject" ? "close" : "check",

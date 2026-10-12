@@ -1,5 +1,4 @@
 import { setAudioModeAsync, useAudioPlaylist } from "expo-audio";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, type ComponentProps } from "react";
 import {
   ActivityIndicator,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AppIcon } from "@/components/vendor-ui";
 import type { JobDetail, VendorNotification } from "@/types/vendor";
 import {
   getJobBookingId,
@@ -114,7 +114,7 @@ export function IncomingJobModal({
 
           <View style={styles.phoneCircle}>
             <View style={styles.phoneCircleInner}>
-              <SymbolView
+              <AppIcon
                 name={{ ios: "phone.fill", android: "call", web: "call" }}
                 size={54}
                 tintColor="#ffffff"
@@ -207,7 +207,7 @@ function CallAction({
 }: {
   color: string;
   disabled: boolean;
-  icon: ComponentProps<typeof SymbolView>["name"];
+  icon: ComponentProps<typeof AppIcon>["name"];
   label: string;
   onPress: () => void;
 }) {
@@ -222,7 +222,7 @@ function CallAction({
           (pressed || disabled) && styles.pressed,
         ]}
       >
-        <SymbolView name={icon} size={32} tintColor="#ffffff" />
+        <AppIcon name={icon} size={32} tintColor="#ffffff" />
       </Pressable>
       <Text style={styles.callLabel}>{label}</Text>
     </View>

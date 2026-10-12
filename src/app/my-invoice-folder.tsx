@@ -1,4 +1,3 @@
-import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -6,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'reac
 
 import { getMyInvoices, type MyInvoice } from '@/api/myWorkApi';
 import { normalizeApiError } from '@/api';
-import { Card, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, SectionIntro, ui } from '@/components/vendor-ui';
+import { Card, EmptyState, ErrorState, openExternalUrl, ProtectedScreen, SectionIntro, sharePdf, ui } from '@/components/vendor-ui';
 import { formatUkDate } from '@/types/vendor';
 
 /**
@@ -49,19 +48,32 @@ export default function MyInvoiceFolderScreen() {
     );
   }, [invoices, query]);
 
-  async function handleShare(invoice: MyInvoice) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  /**
+   * Share and Save both go through the share sheet: it is the one place the
+   * phone offers to send the file on, and also to keep it ("Save to Files" on
+   * iOS, a file manager on Android). Only the wording of the sheet differs.
+   */
+  async function handlePdf(invoice: MyInvoice, dialogTitle: string) {
     if (!invoice.pdf_url) {
       Alert.alert('Not ready yet', 'This invoice does not have a PDF yet.');
       return;
     }
-    try {
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(invoice.pdf_url);
-        return;
-      }
-      await openExternalUrl(invoice.pdf_url, 'This device could not open it directly.');
-    } catch {
-      Alert.alert('Could not share the PDF', 'Please try again in a moment.');
+
+    setBusyId(String(invoice.id));
+    const shared = await sharePdf(
+      invoice.pdf_url,
+      `invoice-${invoice.invoice_number ?? invoice.id}`,
+      dialogTitle,
+    );
+    setBusyId(null);
+
+    if (!shared) {
+      Alert.alert(
+        'Could not open the PDF',
+        'Check your connection and try again in a moment.',
+      );
     }
   }
 
@@ -117,8 +129,21 @@ export default function MyInvoiceFolderScreen() {
                   >
                     <Text style={ui.secondaryButtonText}>View PDF</Text>
                   </Pressable>
-                  <Pressable onPress={() => handleShare(invoice)} style={ui.secondaryButton}>
-                    <Text style={ui.secondaryButtonText}>Share</Text>
+                  <Pressable
+                    onPress={() => handlePdf(invoice, 'Share invoice')}
+                    disabled={busyId === String(invoice.id)}
+                    style={ui.secondaryButton}
+                  >
+                    <Text style={ui.secondaryButtonText}>
+                      {busyId === String(invoice.id) ? 'Preparing…' : 'Share'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handlePdf(invoice, 'Save invoice')}
+                    disabled={busyId === String(invoice.id)}
+                    style={ui.secondaryButton}
+                  >
+                    <Text style={ui.secondaryButtonText}>Download</Text>
                   </Pressable>
                 </>
               ) : (

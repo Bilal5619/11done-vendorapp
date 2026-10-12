@@ -1,4 +1,3 @@
-import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles as authStyles } from '@/app/index';
 import { reportGroups } from '@/constants/report-flow';
 import { useAuth } from '@/context/AuthContext';
+import { AppIcon } from '@/components/vendor-ui';
 
 const fontFamily = Platform.select({
   web: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -59,7 +59,7 @@ export default function NewReportScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerIcon}>
-            <SymbolView
+            <AppIcon
               name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }}
               size={22}
               tintColor="#f8fafc"
@@ -96,7 +96,7 @@ export default function NewReportScreen() {
                     <Text style={styles.optionText}>{option}</Text>
                     <View style={styles.optionActions}>
                       <Pressable onPress={() => createReport(group.title, option)} style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}>
-                        <SymbolView
+                        <AppIcon
                           name={{ ios: 'square.and.pencil', android: 'edit_document', web: 'edit_document' }}
                           size={16}
                           tintColor="#101214"
@@ -104,7 +104,7 @@ export default function NewReportScreen() {
                         <Text style={styles.actionButtonText}>Create</Text>
                       </Pressable>
                       <Pressable style={({ pressed }) => [styles.uploadButton, pressed && styles.pressed]}>
-                        <SymbolView
+                        <AppIcon
                           name={{ ios: 'arrow.up.doc', android: 'upload_file', web: 'upload_file' }}
                           size={16}
                           tintColor="#f8fafc"
