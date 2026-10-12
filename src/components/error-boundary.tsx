@@ -51,11 +51,7 @@ export class ErrorBoundary extends Component<
       return (
         <View style={styles.screen}>
           <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.message}>
-            This screen ran into a problem and couldn&apos;t continue. Nothing
-            you were doing has been charged or lost — tap below to go back to
-            the dashboard and try again.
-          </Text>
+          <Text style={styles.message}>{this.state.error.message}</Text>
           <Pressable onPress={this.reset} style={styles.button}>
             <Text style={styles.buttonText}>Back to dashboard</Text>
           </Pressable>

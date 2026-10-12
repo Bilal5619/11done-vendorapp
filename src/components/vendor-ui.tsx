@@ -3,12 +3,7 @@ import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import {
-  PropsWithChildren,
-  RefObject,
-  useEffect,
-  useState,
-} from "react";
+import { PropsWithChildren, RefObject, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,12 +13,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { useAccountStatus } from "@/context/AccountStatusContext";
 import { useAuth } from "@/context/AuthContext";
@@ -96,6 +95,7 @@ export async function openExternalUrl(
   failureMessage: string = "This device could not open that. Please try again in a moment.",
 ): Promise<void> {
   if (!url) return;
+
   try {
     await Linking.openURL(url);
   } catch {
@@ -220,11 +220,15 @@ export function ProtectedScreen({
   children,
   scroll = true,
   scrollRef,
+  onRefresh,
+  refreshing = false,
 }: PropsWithChildren<{
   title: string;
   activeRoute: AppRoute;
   scroll?: boolean;
   scrollRef?: RefObject<ScrollView | null>;
+  onRefresh?: () => Promise<void> | void;
+  refreshing?: boolean;
 }>) {
   const { token, isRestoring } = useAuth();
   const { isComplete, isLoading: isCheckingAccount } = useAccountStatus();
@@ -256,7 +260,9 @@ export function ProtectedScreen({
 
   // Android draws edge to edge, so the last card would otherwise sit under the
   // back / home / recent apps bar. Clear it with the real bottom inset.
-  const bottomInset = { paddingBottom: ui.content.paddingBottom + insets.bottom };
+  const bottomInset = {
+    paddingBottom: ui.content.paddingBottom + insets.bottom,
+  };
 
   const content = scroll ? (
     <ScrollView
@@ -266,6 +272,11 @@ export function ProtectedScreen({
       keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        ) : undefined
+      }
     >
       {children}
     </ScrollView>
@@ -325,6 +336,22 @@ export function Header({
       <Text style={ui.headerTitle}>{title}</Text>
       <View style={ui.headerActions}>
         <Pressable
+          onPress={() => router.push("/leads")}
+          hitSlop={10}
+          style={ui.headerIcon}
+        >
+          <SymbolView
+            name={{
+              ios: "megaphone.fill",
+              android: "campaign",
+              web: "campaign",
+            }}
+            size={21}
+            tintColor="#f8fafc"
+          />
+        </Pressable>
+
+        <Pressable
           onPress={() => router.push("/notifications")}
           hitSlop={10}
           style={ui.headerIcon}
@@ -338,6 +365,7 @@ export function Header({
             size={20}
             tintColor="#f8fafc"
           />
+
           {unreadCount > 0 ? (
             <View style={ui.notificationBadge}>
               <Text style={ui.notificationBadgeText}>
@@ -346,7 +374,6 @@ export function Header({
             </View>
           ) : null}
         </Pressable>
-        <View style={ui.headerIcon} />
       </View>
     </View>
   );
@@ -916,13 +943,13 @@ export const ui: Record<string, any> = StyleSheet.create({
   pressed: { opacity: 0.72 },
   /* Drawer styles */
   drawerContainer: {
-  position: "absolute",
-  left: 0,
-  top: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 9999,
-},
+    position: "absolute",
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  },
   drawerOverlay: {
     position: "absolute",
     left: 0,
