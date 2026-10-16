@@ -252,7 +252,10 @@ const gasApplianceDetailsFields: ElectricalField[] = [
     options: ["Yes", "No", "N/A", "Visual inspection only"],
     required: false,
   }),
-  f("co2_reading", "CO2 reading (ppm)", "decimal", { required: false }),
+  // CO2 is read as a percentage of the flue gas, not in parts per million.
+  // CO is the one measured in ppm, which is how the two came to be labelled
+  // the same way.
+  f("co2_reading", "CO2 reading (%)", "decimal", { required: false }),
   f("co_reading", "CO reading (ppm)", "decimal", { required: false }),
   f(
     "combustion_analyser_reading",
@@ -317,7 +320,7 @@ const gasApplianceDetailsFields: ElectricalField[] = [
 
 const gasInspectionResultsFields: ElectricalField[] = [
   f("appliance", "Appliance (location ref)", "text", { required: true }),
-  f("co2_reading", "CO2 reading (ppm)", "decimal"),
+  f("co2_reading", "CO2 reading (%)", "decimal"),
   f("co_reading", "CO reading (ppm)", "decimal"),
   f(
     "combustion_analyser_reading",
